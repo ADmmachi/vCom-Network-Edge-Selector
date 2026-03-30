@@ -84,7 +84,7 @@ export default function App() {
       >
         <Container size="lg" py={12}>
           <Group justify="space-between" align="center">
-            <Text fw={700} size="lg" c="#014C71">vCom</Text>
+            <img src="/vcom-logo.png" alt="vCom — An AppDirect Company" style={{ height: 40 }} />
             <Box>
               <Text size="sm" fw={700} c="#3E1A80">Network Edge Appliance Selector</Text>
               <Text size="xs" c="dimmed" ta="right">v2.0</Text>
