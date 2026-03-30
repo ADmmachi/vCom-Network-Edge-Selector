@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { type Feature, type ApplianceInterface, circuitTypes } from "../data/appliances";
 import { type RecommendationResult, type ScoredAppliance, type VendorRecommendation } from "../engine/recommendationEngine";
-import { Box, Text, Group, Paper, SimpleGrid, UnstyledButton, Loader } from "@mantine/core";
+import { Box, Text, Group, Paper, SimpleGrid, UnstyledButton, Loader, Tooltip } from "@mantine/core";
 import { IconCheck, IconX, IconChevronDown, IconChevronRight } from "@tabler/icons-react";
 import ScoreTooltip from "./ScoreTooltip";
 
@@ -145,8 +145,8 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
   );
 }
 
-function CompactCard({ result, featureMap, isNonMatching, isGrowthPick }: {
-  result: ScoredAppliance; featureMap: Record<string, string>; isNonMatching?: boolean; isGrowthPick?: boolean;
+function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthReason }: {
+  result: ScoredAppliance; featureMap: Record<string, string>; isNonMatching?: boolean; isGrowthPick?: boolean; growthReason?: string | null;
 }) {
   const { appliance, percentageScore } = result;
   return (
@@ -156,9 +156,26 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick }: {
       opacity: isNonMatching ? 0.75 : 1,
     }}>
       {isGrowthPick && (
-        <Text style={{ fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: "#0E8742", color: "#fff", display: "inline-block", padding: "2px 8px", borderRadius: 99, marginBottom: 8 }}>
-          📈 Growth Pick
-        </Text>
+        <Tooltip
+          label={growthReason || "Recommended for future bandwidth growth"}
+          position="top"
+          withArrow
+          multiline
+          w={260}
+          styles={{
+            tooltip: {
+              fontSize: "0.65rem",
+              lineHeight: 1.4,
+              padding: "8px 12px",
+              backgroundColor: "#212529",
+              color: "#fff",
+            },
+          }}
+        >
+          <Text style={{ fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: "#0E8742", color: "#fff", display: "inline-block", padding: "2px 8px", borderRadius: 99, marginBottom: 8, cursor: "help" }}>
+            📈 Growth Pick
+          </Text>
+        </Tooltip>
       )}
       <Box style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <Box>
@@ -257,7 +274,13 @@ function VendorColumn({ vendorRec, featureMap, maxInterfaceRows, maxCircuitRows 
                   return compareModels(a.appliance.model, b.appliance.model);
                 })
                 .map(scored => (
-                  <CompactCard key={scored.appliance.id} result={scored} featureMap={featureMap} isGrowthPick={vendorRec.growthPick?.appliance.id === scored.appliance.id} />
+                  <CompactCard
+                    key={scored.appliance.id}
+                    result={scored}
+                    featureMap={featureMap}
+                    isGrowthPick={vendorRec.growthPick?.appliance.id === scored.appliance.id}
+                    growthReason={vendorRec.growthPick?.appliance.id === scored.appliance.id ? vendorRec.growthReason : null}
+                  />
                 ))}
             </Box>
           )}

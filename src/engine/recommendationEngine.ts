@@ -1,5 +1,9 @@
 import { appliances, handoffTypes, type Appliance, type CircuitEntry } from "../data/appliances";
 
+function formatThroughput(mbps: number): string {
+  return mbps >= 1000 ? `${mbps / 1000} Gbps` : `${mbps} Mbps`;
+}
+
 export interface SelectionCriteria {
   circuits: CircuitEntry[];
   features: string[];
@@ -42,6 +46,7 @@ export interface VendorRecommendation {
   vendor: string;
   recommended: ScoredAppliance | null;
   growthPick: ScoredAppliance | null;
+  growthReason: string | null;
   upgrades: ScoredAppliance[];
   nonMatching: ScoredAppliance[];
   oversizedAlternative: ScoredAppliance | null;
@@ -334,6 +339,7 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
         vendor,
         recommended: null,
         growthPick: null,
+        growthReason: null,
         upgrades: [],
         nonMatching,
         oversizedAlternative: null,
@@ -406,6 +412,7 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
     const growthMaxThroughput = requiredBandwidth * GROWTH_THROUGHPUT_MAX_RATIO;
 
     let growthPick: ScoredAppliance | null = null;
+    let growthReason: string | null = null;
     if (upgrades.length > 0 && requiredBandwidth > 0) {
       // Find the lowest upgrade within the growth sweet spot
       const growthCandidates = upgrades.filter(scored =>
@@ -419,6 +426,8 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
         growthPick = growthCandidates.sort(
           (resultA, resultB) => resultA.appliance.throughputMbps - resultB.appliance.throughputMbps
         )[0];
+        const ratio = Math.round((growthPick.appliance.throughputMbps / requiredBandwidth) * 10) / 10;
+        growthReason = `${ratio}× your required bandwidth (${formatThroughput(growthPick.appliance.throughputMbps)} vs ${formatThroughput(requiredBandwidth)} needed) — room to grow without oversizing.`;
       } else {
         // No model in the sweet spot — pick the next step up from recommended if it exists
         const nextStepUp = upgrades.find(scored =>
@@ -426,6 +435,7 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
         );
         if (nextStepUp) {
           growthPick = nextStepUp;
+          growthReason = `Next step up from the recommended ${recommended.appliance.model} (${formatThroughput(nextStepUp.appliance.throughputMbps)} vs ${formatThroughput(recommended.appliance.throughputMbps)}).`;
         }
       }
     }
@@ -434,6 +444,7 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
       vendor,
       recommended,
       growthPick,
+      growthReason,
       upgrades,
       nonMatching,
       oversizedAlternative,
