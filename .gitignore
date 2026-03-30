@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+sandbox
+workspace
+node_modules
+repo-clone
