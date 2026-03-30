@@ -8,7 +8,7 @@ import {
   getUploadOptions,
   isSymmetrical,
 } from "../data/appliances";
-import { Box, Text, Group, Select, NumberInput, NativeSelect, Button, SimpleGrid, Paper } from "@mantine/core";
+import { Box, Text, Group, NumberInput, NativeSelect, Button, SimpleGrid, Paper } from "@mantine/core";
 import { IconChevronDown } from "@tabler/icons-react";
 
 interface StepCircuitsProps {
