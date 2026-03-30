@@ -155,28 +155,36 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
       borderWidth: isGrowthPick ? 2 : 1,
       opacity: isNonMatching ? 0.75 : 1,
     }}>
-      {isGrowthPick && (
-        <Tooltip
-          label={growthReason || "Recommended for future bandwidth growth"}
-          position="top"
-          withArrow
-          multiline
-          w={260}
-          styles={{
-            tooltip: {
-              fontSize: "0.65rem",
-              lineHeight: 1.4,
-              padding: "8px 12px",
-              backgroundColor: "#212529",
-              color: "#fff",
-            },
-          }}
-        >
-          <Text style={{ fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: "#0E8742", color: "#fff", display: "inline-block", padding: "2px 8px", borderRadius: 99, marginBottom: 8, cursor: "help" }}>
-            📈 Growth Pick
-          </Text>
-        </Tooltip>
-      )}
+      {isGrowthPick && (() => {
+        const lines = growthReason ? growthReason.split("\n") : [];
+        const tierLabel = lines[0] || "Recommended for future bandwidth growth";
+        const detail = lines[1] || null;
+        return (
+          <Tooltip
+            label={
+              <Box>
+                <Text fw={700} style={{ fontSize: "0.7rem", lineHeight: 1.3 }}>{tierLabel}</Text>
+                {detail && <Text style={{ fontSize: "0.65rem", lineHeight: 1.3, opacity: 0.85, marginTop: 2 }}>{detail}</Text>}
+              </Box>
+            }
+            position="top"
+            withArrow
+            multiline
+            w={240}
+            styles={{
+              tooltip: {
+                padding: "8px 12px",
+                backgroundColor: "#212529",
+                color: "#fff",
+              },
+            }}
+          >
+            <Text style={{ fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: "#0E8742", color: "#fff", display: "inline-block", padding: "2px 8px", borderRadius: 99, marginBottom: 8, cursor: "help" }}>
+              📈 Growth Pick
+            </Text>
+          </Tooltip>
+        );
+      })()}
       <Box style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <Box>
           <Text fw={700} size="sm" c="dark">{appliance.model}</Text>

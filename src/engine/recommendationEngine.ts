@@ -426,8 +426,10 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
         growthPick = growthCandidates.sort(
           (resultA, resultB) => resultA.appliance.throughputMbps - resultB.appliance.throughputMbps
         )[0];
-        const ratio = Math.round((growthPick.appliance.throughputMbps / requiredBandwidth) * 10) / 10;
-        growthReason = `${ratio}× your required bandwidth (${formatThroughput(growthPick.appliance.throughputMbps)} vs ${formatThroughput(requiredBandwidth)} needed) — room to grow without oversizing.`;
+        const ratio = growthPick.appliance.throughputMbps / requiredBandwidth;
+        const availablePercent = Math.round(((growthPick.appliance.throughputMbps - requiredBandwidth) / growthPick.appliance.throughputMbps) * 100);
+        const tierLabel = ratio >= 2.5 ? "Extensive growth headroom" : ratio >= 2.0 ? "Strong growth headroom" : "Moderate growth headroom";
+        growthReason = `${tierLabel}\n${availablePercent}% available for growth`;
       } else {
         // No model in the sweet spot — pick the next step up from recommended if it exists
         const nextStepUp = upgrades.find(scored =>
@@ -435,7 +437,8 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
         );
         if (nextStepUp) {
           growthPick = nextStepUp;
-          growthReason = `Next step up from the recommended ${recommended.appliance.model} (${formatThroughput(nextStepUp.appliance.throughputMbps)} vs ${formatThroughput(recommended.appliance.throughputMbps)}).`;
+          const surplus = nextStepUp.appliance.throughputMbps - recommended.appliance.throughputMbps;
+          growthReason = `Next model up from ${recommended.appliance.model}\n${formatThroughput(surplus)} additional capacity`;
         }
       }
     }
