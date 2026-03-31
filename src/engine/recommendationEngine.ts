@@ -228,22 +228,44 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
     if (haPortCount > 0) {
       haNote = `HA Pair — Order Qty: 2. This model has ${haPortCount} dedicated HA port${haPortCount !== 1 ? "s" : ""} for peering.`;
     } else {
-      const totalLanPorts = appliance.interfaces
+      // Count pure LAN ports
+      const pureLanPorts = appliance.interfaces
         .filter(iface => {
           const purposeLower = iface.purpose.toLowerCase();
           return purposeLower.includes("lan") && !purposeLower.includes("wan");
         })
         .reduce((total, iface) => total + iface.quantity, 0);
 
+      // Count dual-purpose LAN/WAN ports (e.g., VeloCloud)
+      const dualPurposePorts = appliance.interfaces
+        .filter(iface => {
+          const purposeLower = iface.purpose.toLowerCase();
+          return purposeLower.includes("lan") && purposeLower.includes("wan");
+        })
+        .reduce((total, iface) => total + iface.quantity, 0);
+
+      // Count how many WAN ports are consumed by circuit assignments
+      const usedWanPorts = matchDetails.interfaces?.matches.filter((m: InterfaceMatch) => m.isMatched).length ?? 0;
+
+      // For dual-purpose ports, available = total dual ports minus those used for WAN
+      const availableDualPorts = Math.max(0, dualPurposePorts - usedWanPorts);
+
+      const totalAvailableLanPorts = pureLanPorts + availableDualPorts;
+
       const isMeraki = appliance.vendor === "Cisco Meraki";
+      const isVeloCloud = appliance.vendor === "VeloCloud";
 
       if (isMeraki) {
         haNote = "HA Pair — Order Qty: 2. Meraki uses warm spare HA via cloud dashboard — no dedicated peering link required between units.";
-      } else if (totalLanPorts >= 1) {
-        haNote = `HA Pair — Order Qty: 2. No dedicated HA port — 1 LAN port will be used for HA peering (${totalLanPorts} LAN ports available, ${totalLanPorts - 1} remaining after HA).`;
+      } else if (isVeloCloud && totalAvailableLanPorts >= 1) {
+        haNote = `HA Pair — Order Qty: 2. VeloCloud Active/Standby — connect units via any available RJ45 interface for HA heartbeat (${totalAvailableLanPorts} port${totalAvailableLanPorts !== 1 ? "s" : ""} available, ${totalAvailableLanPorts - 1} remaining after HA).`;
+      } else if (pureLanPorts >= 1) {
+        haNote = `HA Pair — Order Qty: 2. No dedicated HA port — 1 LAN port will be used for HA peering (${pureLanPorts} LAN ports available, ${pureLanPorts - 1} remaining after HA).`;
+      } else if (availableDualPorts >= 1) {
+        haNote = `HA Pair — Order Qty: 2. No dedicated HA port — 1 LAN/WAN port will be used for HA peering (${availableDualPorts} available after WAN assignments, ${availableDualPorts - 1} remaining after HA).`;
       } else {
         haMet = false;
-        haNote = "HA Pair — Order Qty: 2. No dedicated HA port and no available LAN port for HA peering.";
+        haNote = "HA Pair — Order Qty: 2. No dedicated HA port and no available port for HA peering.";
         failureReasons.push("No available interface for HA peering");
       }
     }
