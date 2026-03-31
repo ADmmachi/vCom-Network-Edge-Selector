@@ -100,8 +100,8 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
       </Box>
       <SimpleGrid cols={3} spacing={6} mb="sm">
         {[
-          ["Throughput", formatThroughput(appliance.throughputMbps)],
-          ["FW Throughput", formatThroughput(appliance.firewallThroughputMbps)],
+          ["NGFW Throughput", formatThroughput(appliance.ngfwThroughputMbps)],
+          ["Capacity", formatThroughput(appliance.capacityMbps)],
           ["Form Factor", appliance.formFactor],
           ["Price", appliance.priceRange],
           ["Power", `${appliance.powerConsumptionWatts}W`],
@@ -215,12 +215,12 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
       </Box>
       <SimpleGrid cols={3} spacing={6} mb={8}>
         <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
-          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>Throughput</Text>
-          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{formatThroughput(appliance.throughputMbps)}</Text>
+          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>NGFW Throughput</Text>
+          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{formatThroughput(appliance.ngfwThroughputMbps)}</Text>
         </Box>
         <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
-          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>FW Throughput</Text>
-          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{formatThroughput(appliance.firewallThroughputMbps)}</Text>
+          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>Capacity</Text>
+          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{formatThroughput(appliance.capacityMbps)}</Text>
         </Box>
         <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
           <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>Form Factor</Text>
@@ -284,7 +284,7 @@ function VendorColumn({ vendorRec, featureMap, maxInterfaceRows, maxCircuitRows 
         <Paper mt="sm" p="sm" radius="md" bg="rgba(1,76,113,0.03)" withBorder style={{ borderColor: "rgba(1,76,113,0.15)" }}>
           <Text style={{ fontSize: "0.65rem", fontWeight: 600, color: "#014C71", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Alternative with built-in features</Text>
           <Text style={{ fontSize: "0.6rem", color: "#868e96", marginBottom: 8 }}>
-            The <Text span fw={700}>{vendorRec.oversizedAlternative.appliance.model}</Text> meets all preferred requirements ({formatThroughput(vendorRec.oversizedAlternative.appliance.throughputMbps)} throughput) but may be oversized for this site.
+            The <Text span fw={700}>{vendorRec.oversizedAlternative.appliance.model}</Text> meets all preferred requirements ({formatThroughput(vendorRec.oversizedAlternative.appliance.ngfwThroughputMbps)} NGFW throughput) but may be oversized for this site.
           </Text>
           <CompactCard result={vendorRec.oversizedAlternative} featureMap={featureMap} />
         </Paper>

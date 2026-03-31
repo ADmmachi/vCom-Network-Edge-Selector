@@ -223,9 +223,9 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
 
   if (totalRequiredBandwidth > 0) {
     let throughputScore = 0;
-    if (appliance.throughputMbps >= totalRequiredBandwidth) {
+    if (appliance.ngfwThroughputMbps >= totalRequiredBandwidth) {
       throughputScore = WEIGHTS.throughput;
-      const overProvisionRatio = appliance.throughputMbps / totalRequiredBandwidth;
+      const overProvisionRatio = appliance.ngfwThroughputMbps / totalRequiredBandwidth;
 
       // Graduated oversize penalty — starts beyond Growth Pick max range (3×)
       if (overProvisionRatio > GROWTH_THROUGHPUT_MAX_RATIO) {
@@ -246,9 +246,9 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
       }
     } else {
       throughputMet = false;
-      const ratio = appliance.throughputMbps / totalRequiredBandwidth;
+      const ratio = appliance.ngfwThroughputMbps / totalRequiredBandwidth;
       throughputScore = WEIGHTS.throughput * Math.max(ratio - 0.2, 0);
-      failureReasons.push(`Throughput ${appliance.throughputMbps} Mbps is below required ${totalRequiredBandwidth} Mbps`);
+      failureReasons.push(`NGFW Throughput ${appliance.ngfwThroughputMbps} Mbps is below required ${totalRequiredBandwidth} Mbps`);
     }
     totalScore += throughputScore;
     maxPossibleScore += WEIGHTS.throughput;
@@ -256,7 +256,7 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
       score: throughputScore,
       max: WEIGHTS.throughput,
       totalRequired: totalRequiredBandwidth,
-      applianceThroughput: appliance.throughputMbps,
+      applianceThroughput: appliance.ngfwThroughputMbps,
       meetsRequirement: throughputMet,
     };
   }
@@ -421,7 +421,7 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
   for (const [vendor, vendorAppliances] of vendorMap) {
     const hardMatches = vendorAppliances
       .filter(scored => scored.meetsHardCriteria)
-      .sort((resultA, resultB) => resultA.appliance.throughputMbps - resultB.appliance.throughputMbps);
+      .sort((resultA, resultB) => resultA.appliance.ngfwThroughputMbps - resultB.appliance.ngfwThroughputMbps);
 
     const nonMatching = vendorAppliances
       .filter(scored => !scored.meetsHardCriteria)
@@ -455,7 +455,7 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
       recommended = bestFit;
     } else if (fullMatch) {
       // There's a model that meets everything — is it too big?
-      const throughputRatio = fullMatch.appliance.throughputMbps / bestFit.appliance.throughputMbps;
+      const throughputRatio = fullMatch.appliance.ngfwThroughputMbps / bestFit.appliance.ngfwThroughputMbps;
 
       if (throughputRatio <= OVERSIZE_THROUGHPUT_RATIO) {
         // Acceptable step-up — recommend the full match
@@ -493,7 +493,7 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
     // Upgrades: everything in hardMatches above the recommended, excluding oversizedAlternative
     const upgrades = hardMatches.filter(scored =>
       scored.appliance.id !== recommended.appliance.id &&
-      scored.appliance.throughputMbps >= recommended.appliance.throughputMbps
+      scored.appliance.ngfwThroughputMbps >= recommended.appliance.ngfwThroughputMbps
     );
 
     // Growth pick: from upgrades, find a model with moderate room to grow
@@ -509,28 +509,28 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
     if (upgrades.length > 0 && requiredBandwidth > 0) {
       // Find the lowest upgrade within the growth sweet spot
       const growthCandidates = upgrades.filter(scored =>
-        scored.appliance.throughputMbps >= growthMinThroughput &&
-        scored.appliance.throughputMbps <= growthMaxThroughput &&
-        scored.appliance.throughputMbps > recommended.appliance.throughputMbps
+        scored.appliance.ngfwThroughputMbps >= growthMinThroughput &&
+        scored.appliance.ngfwThroughputMbps <= growthMaxThroughput &&
+        scored.appliance.ngfwThroughputMbps > recommended.appliance.ngfwThroughputMbps
       );
 
       if (growthCandidates.length > 0) {
         // Pick the lowest one in the growth range
         growthPick = growthCandidates.sort(
-          (resultA, resultB) => resultA.appliance.throughputMbps - resultB.appliance.throughputMbps
+          (resultA, resultB) => resultA.appliance.ngfwThroughputMbps - resultB.appliance.ngfwThroughputMbps
         )[0];
-        const ratio = growthPick.appliance.throughputMbps / requiredBandwidth;
-        const availablePercent = Math.round(((growthPick.appliance.throughputMbps - requiredBandwidth) / growthPick.appliance.throughputMbps) * 100);
+        const ratio = growthPick.appliance.ngfwThroughputMbps / requiredBandwidth;
+        const availablePercent = Math.round(((growthPick.appliance.ngfwThroughputMbps - requiredBandwidth) / growthPick.appliance.ngfwThroughputMbps) * 100);
         const tierLabel = ratio >= 2.5 ? "Extensive growth headroom" : ratio >= 2.0 ? "Strong growth headroom" : "Moderate growth headroom";
         growthReason = `${tierLabel}\n${availablePercent}% available for growth`;
       } else {
         // No model in the sweet spot — pick the next step up from recommended if it exists
         const nextStepUp = upgrades.find(scored =>
-          scored.appliance.throughputMbps > recommended.appliance.throughputMbps
+          scored.appliance.ngfwThroughputMbps > recommended.appliance.ngfwThroughputMbps
         );
         if (nextStepUp) {
           growthPick = nextStepUp;
-          const surplus = nextStepUp.appliance.throughputMbps - recommended.appliance.throughputMbps;
+          const surplus = nextStepUp.appliance.ngfwThroughputMbps - recommended.appliance.ngfwThroughputMbps;
           growthReason = `Next model up from ${recommended.appliance.model}\n${formatThroughput(surplus)} additional capacity`;
         }
       }
