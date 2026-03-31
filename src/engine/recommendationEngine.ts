@@ -180,8 +180,23 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
     if (appliance.throughputMbps >= totalRequiredBandwidth) {
       throughputScore = WEIGHTS.throughput;
       const overProvisionRatio = appliance.throughputMbps / totalRequiredBandwidth;
-      if (overProvisionRatio > 5) {
-        throughputScore *= 0.8;
+
+      // Graduated oversize penalty — starts beyond Growth Pick max range (3×)
+      if (overProvisionRatio > GROWTH_THROUGHPUT_MAX_RATIO) {
+        let penalty: number;
+        if (overProvisionRatio <= 5) {
+          // 3–5×: linear taper from 100% → 70%
+          const t = (overProvisionRatio - GROWTH_THROUGHPUT_MAX_RATIO) / (5 - GROWTH_THROUGHPUT_MAX_RATIO);
+          penalty = 1.0 - (0.3 * t);
+        } else if (overProvisionRatio <= 10) {
+          // 5–10×: linear taper from 70% → 40%
+          const t = (overProvisionRatio - 5) / 5;
+          penalty = 0.7 - (0.3 * t);
+        } else {
+          // >10×: floor at 40%
+          penalty = 0.4;
+        }
+        throughputScore *= penalty;
       }
     } else {
       throughputMet = false;
@@ -299,7 +314,7 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
 
   return {
     appliance,
-    totalScore: Math.round(totalScore * 10) / 10,
+    totalScore: Math.round(totalScore),
     maxPossibleScore,
     percentageScore,
     meetsHardCriteria,
