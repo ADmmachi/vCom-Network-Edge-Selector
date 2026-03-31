@@ -113,16 +113,29 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
 
   // --- HARD: Interface matching ---
   let allInterfacesMatched = true;
+  let fortiLinkUsedAsWan = 0;
   if (criteria.circuits.length > 0) {
-    const availableInterfaces: { type: string; quantity: number }[] = [];
+    // Primary WAN pool: interfaces with "wan" in their purpose
+    const wanInterfaces: { type: string; quantity: number }[] = [];
+    // Secondary LAN pool: pure LAN or LAN/WAN interfaces that can serve as WAN if needed
+    const lanInterfaces: { type: string; quantity: number }[] = [];
+    // Last-resort pool: FortiLink interfaces (supported as WAN but not primary use case)
+    const fortiLinkInterfaces: { type: string; quantity: number }[] = [];
+
     for (const applianceInterface of appliance.interfaces) {
       const purposeLower = applianceInterface.purpose.toLowerCase();
-      if (purposeLower.includes("wan")) {
-        availableInterfaces.push({ type: applianceInterface.type, quantity: applianceInterface.quantity });
+      if (purposeLower === "fortilink") {
+        fortiLinkInterfaces.push({ type: applianceInterface.type, quantity: applianceInterface.quantity });
+      } else if (purposeLower.includes("wan")) {
+        wanInterfaces.push({ type: applianceInterface.type, quantity: applianceInterface.quantity });
+      } else if (purposeLower.includes("lan")) {
+        lanInterfaces.push({ type: applianceInterface.type, quantity: applianceInterface.quantity });
       }
     }
 
-    const interfacePool = availableInterfaces.map(iface => ({ ...iface, remaining: iface.quantity }));
+    const wanPool = wanInterfaces.map(iface => ({ ...iface, remaining: iface.quantity }));
+    const lanPool = lanInterfaces.map(iface => ({ ...iface, remaining: iface.quantity }));
+    const fortiLinkPool = fortiLinkInterfaces.map(iface => ({ ...iface, remaining: iface.quantity }));
     const matches: InterfaceMatch[] = [];
 
     for (const circuit of criteria.circuits) {
@@ -130,12 +143,38 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
       let matched = false;
       let matchedInterfaceType: string | null = null;
 
-      for (const poolEntry of interfacePool) {
+      // Try WAN pool first (primary)
+      for (const poolEntry of wanPool) {
         if (poolEntry.remaining > 0 && interfaceCanServeHandoff(poolEntry.type, requiredType)) {
           poolEntry.remaining--;
           matched = true;
           matchedInterfaceType = poolEntry.type;
           break;
+        }
+      }
+
+      // Try LAN pool second (dual-purpose LAN/WAN ports)
+      if (!matched) {
+        for (const poolEntry of lanPool) {
+          if (poolEntry.remaining > 0 && interfaceCanServeHandoff(poolEntry.type, requiredType)) {
+            poolEntry.remaining--;
+            matched = true;
+            matchedInterfaceType = poolEntry.type;
+            break;
+          }
+        }
+      }
+
+      // Try FortiLink pool last (last resort — supported but not primary use)
+      if (!matched) {
+        for (const poolEntry of fortiLinkPool) {
+          if (poolEntry.remaining > 0 && interfaceCanServeHandoff(poolEntry.type, requiredType)) {
+            poolEntry.remaining--;
+            matched = true;
+            matchedInterfaceType = `${poolEntry.type} (FortiLink)`;
+            fortiLinkUsedAsWan++;
+            break;
+          }
         }
       }
 
@@ -157,7 +196,14 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
     }
 
     const matchedCount = matches.filter(match => match.isMatched).length;
-    const interfaceScore = (matchedCount / criteria.circuits.length) * WEIGHTS.interfaceMatch;
+    let interfaceScore = (matchedCount / criteria.circuits.length) * WEIGHTS.interfaceMatch;
+
+    // Small penalty when FortiLink ports are used as WAN (2% per FortiLink port used)
+    if (fortiLinkUsedAsWan > 0) {
+      const fortiLinkPenalty = 1.0 - (fortiLinkUsedAsWan * 0.02);
+      interfaceScore *= Math.max(fortiLinkPenalty, 0.9); // Floor at 90% of interface score
+    }
+
     totalScore += interfaceScore;
     maxPossibleScore += WEIGHTS.interfaceMatch;
 
@@ -244,13 +290,21 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
         })
         .reduce((total, iface) => total + iface.quantity, 0);
 
+      // Count FortiLink ports (can serve as LAN, including for HA peering)
+      const fortiLinkPorts = appliance.interfaces
+        .filter(iface => iface.purpose.toLowerCase() === "fortilink")
+        .reduce((total, iface) => total + iface.quantity, 0);
+
+      // FortiLink ports already used as WAN are not available for HA
+      const availableFortiLinkPorts = Math.max(0, fortiLinkPorts - fortiLinkUsedAsWan);
+
       // Count how many WAN ports are consumed by circuit assignments
       const usedWanPorts = matchDetails.interfaces?.matches.filter((m: InterfaceMatch) => m.isMatched).length ?? 0;
 
       // For dual-purpose ports, available = total dual ports minus those used for WAN
       const availableDualPorts = Math.max(0, dualPurposePorts - usedWanPorts);
 
-      const totalAvailableLanPorts = pureLanPorts + availableDualPorts;
+      const totalAvailableLanPorts = pureLanPorts + availableDualPorts + availableFortiLinkPorts;
 
       const isMeraki = appliance.vendor === "Cisco Meraki";
       const isVeloCloud = appliance.vendor === "VeloCloud";
@@ -263,6 +317,8 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
         haNote = `HA Pair — Order Qty: 2. No dedicated HA port — 1 LAN port will be used for HA peering (${pureLanPorts} LAN ports available, ${pureLanPorts - 1} remaining after HA).`;
       } else if (availableDualPorts >= 1) {
         haNote = `HA Pair — Order Qty: 2. No dedicated HA port — 1 LAN/WAN port will be used for HA peering (${availableDualPorts} available after WAN assignments, ${availableDualPorts - 1} remaining after HA).`;
+      } else if (availableFortiLinkPorts >= 1) {
+        haNote = `HA Pair — Order Qty: 2. No dedicated HA port — 1 FortiLink port will be used for HA peering (${availableFortiLinkPorts} FortiLink port${availableFortiLinkPorts !== 1 ? "s" : ""} available, ${availableFortiLinkPorts - 1} remaining after HA).`;
       } else {
         haMet = false;
         haNote = "HA Pair — Order Qty: 2. No dedicated HA port and no available port for HA peering.";
