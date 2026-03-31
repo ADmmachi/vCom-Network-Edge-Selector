@@ -250,7 +250,13 @@ function VendorColumn({ vendorRec, featureMap, maxInterfaceRows, maxCircuitRows 
   return (
     <Box style={{ display: "flex", flexDirection: "column" }}>
       <Box style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid #e9ecef", minHeight: 48 }}>
-        <Text size="sm" fw={700} c="dark">{vendorRec.vendor}</Text>
+        {vendorRec.vendor === "Fortinet" ? (
+          <img src="/fortinet-logo.png" alt="Fortinet" style={{ height: 44, objectFit: "contain" }} />
+        ) : vendorRec.vendor === "Cisco Meraki" ? (
+          <img src="/cisco-meraki-logo.png" alt="Cisco Meraki" style={{ height: 28, objectFit: "contain" }} />
+        ) : (
+          <Text size="1.5rem" fw={700} c="dark">{vendorRec.vendor}</Text>
+        )}
         {!hasRecommendation && <Text style={{ fontSize: "0.6rem", color: "#adb5bd", marginTop: 4 }}>No compatible model</Text>}
       </Box>
       {hasRecommendation && (
