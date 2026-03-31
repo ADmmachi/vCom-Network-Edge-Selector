@@ -454,7 +454,7 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
     });
   }
 
-  const vendorOrder = ["Fortinet", "Cisco Meraki", "VeloCloud (Arista)"];
+  const vendorOrder = ["Fortinet", "Cisco Meraki", "VeloCloud"];
   vendorRecommendations.sort((vendorA, vendorB) => {
     const indexA = vendorOrder.indexOf(vendorA.vendor);
     const indexB = vendorOrder.indexOf(vendorB.vendor);

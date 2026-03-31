@@ -1267,13 +1267,13 @@ export const appliances: Appliance[] = [
     notes: "8 GE RJ45 + 2 10GE SFP+ + 2 25GE SFP28 WAN. Up to 20 Gbps firewall, 8 Gbps threat protection. Cisco 8000 series running MX OS. New secure networking ASIC. Foundation for SASE.",
   },
   // ──────────────────────────────────────────────
-  // VeloCloud SD-WAN (by Arista)
+  // VeloCloud SD-WAN
   // ──────────────────────────────────────────────
 
   // --- Edge 710-W ---
   {
     id: "velocloud-710w",
-    vendor: "VeloCloud (Arista)",
+    vendor: "VeloCloud",
     model: "Edge 710-W",
     category: "SD-WAN Edge + Wi-Fi",
     description: "Entry-level desktop SD-WAN appliance with integrated Wi-Fi 6 for small/remote branches. Consolidates SD-WAN, firewall, router, switch, and Wi-Fi in one unit.",
@@ -1301,7 +1301,7 @@ export const appliances: Appliance[] = [
   // --- Edge 710-5G ---
   {
     id: "velocloud-710-5g",
-    vendor: "VeloCloud (Arista)",
+    vendor: "VeloCloud",
     model: "Edge 710-5G",
     category: "SD-WAN Edge + Wi-Fi + 5G",
     description: "Edge 710 with built-in 5G/LTE dual-SIM cellular modem and Wi-Fi 6. All-in-one for sites with unreliable wired circuits or wireless-first WAN.",
@@ -1330,7 +1330,7 @@ export const appliances: Appliance[] = [
   // --- Edge 720 ---
   {
     id: "velocloud-720",
-    vendor: "VeloCloud (Arista)",
+    vendor: "VeloCloud",
     model: "Edge 720",
     category: "SD-WAN Edge",
     description: "Mid-range 1U rack-mount SD-WAN appliance for medium branches and regional offices. Intel Atom processor with 2.5G mGig and 10GbE SFP+ ports.",
@@ -1357,7 +1357,7 @@ export const appliances: Appliance[] = [
   // --- Edge 740 ---
   {
     id: "velocloud-740",
-    vendor: "VeloCloud (Arista)",
+    vendor: "VeloCloud",
     model: "Edge 740",
     category: "SD-WAN Edge",
     description: "High-performance 1U rack-mount SD-WAN appliance for large branches and regional hubs. Higher throughput and tunnel scale than the 720.",
@@ -1384,7 +1384,7 @@ export const appliances: Appliance[] = [
   // --- Edge 4100 ---
   {
     id: "velocloud-4100",
-    vendor: "VeloCloud (Arista)",
+    vendor: "VeloCloud",
     model: "Edge 4100",
     category: "SD-WAN Edge / Hub",
     description: "High-capacity 1U rack-mount SD-WAN appliance for large campus, regional hub, and data center edge deployments. Up to 30 Gbps throughput and 12,000 tunnels.",
@@ -1411,7 +1411,7 @@ export const appliances: Appliance[] = [
   // --- Edge 5100 ---
   {
     id: "velocloud-5100",
-    vendor: "VeloCloud (Arista)",
+    vendor: "VeloCloud",
     model: "Edge 5100",
     category: "SD-WAN Edge / Data Center",
     description: "Enterprise-class 1U SD-WAN appliance for data centers and high-performance hub sites. Up to 100 Gbps throughput with 25GbE and 40GbE interfaces.",

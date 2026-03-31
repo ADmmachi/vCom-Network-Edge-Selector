@@ -9,7 +9,7 @@ import {
   isSymmetrical,
 } from "../data/appliances";
 import { Box, Text, Group, NumberInput, NativeSelect, Button, SimpleGrid, Paper } from "@mantine/core";
-import { IconChevronDown } from "@tabler/icons-react";
+import { IconChevronDown, IconNetwork } from "@tabler/icons-react";
 
 interface StepCircuitsProps {
   circuitTypes: CircuitType[];
@@ -99,7 +99,7 @@ export default function StepCircuits({ circuitTypes, circuits, onCircuitsChange 
   return (
     <Paper p={{ base: "lg", sm: "xl" }} radius="lg" withBorder shadow="lg" bg="white">
       <Group gap={8} mb={4}>
-        <Text size="xl" fw={700} c="dark">🔌 WAN Circuits</Text>
+        <Group gap={8} align="center"><IconNetwork size={24} color="#014C71" /><Text size="xl" fw={700} c="#014C71">WAN Circuits</Text></Group>
       </Group>
       <Text size="sm" c="dimmed" mb="lg">
         How many WAN circuits will connect to this appliance?
