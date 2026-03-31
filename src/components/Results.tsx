@@ -98,12 +98,14 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
           </Group>
         )}
       </Box>
-      <SimpleGrid cols={2} spacing={6} mb="sm">
+      <SimpleGrid cols={3} spacing={6} mb="sm">
         {[
           ["Throughput", formatThroughput(appliance.throughputMbps)],
           ["FW Throughput", formatThroughput(appliance.firewallThroughputMbps)],
           ["Form Factor", appliance.formFactor],
           ["Price", appliance.priceRange],
+          ["Power", `${appliance.powerConsumptionWatts}W`],
+          ["PSU", appliance.powerSupply],
         ].map(([label, value]) => (
           <Box key={label} style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
             <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</Text>
