@@ -213,14 +213,30 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
           )}
         </Box>
       </Box>
-      <SimpleGrid cols={2} spacing={6} mb={8}>
+      <SimpleGrid cols={3} spacing={6} mb={8}>
         <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
           <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>Throughput</Text>
           <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{formatThroughput(appliance.throughputMbps)}</Text>
         </Box>
         <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
+          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>FW Throughput</Text>
+          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{formatThroughput(appliance.firewallThroughputMbps)}</Text>
+        </Box>
+        <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
+          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>Form Factor</Text>
+          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{appliance.formFactor}</Text>
+        </Box>
+        <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
           <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>Price</Text>
           <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{appliance.priceRange}</Text>
+        </Box>
+        <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
+          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>Power</Text>
+          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{appliance.powerConsumptionWatts}W</Text>
+        </Box>
+        <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
+          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>PSU</Text>
+          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{appliance.powerSupply}</Text>
         </Box>
       </SimpleGrid>
       {appliance.interfaces.length > 0 && (
