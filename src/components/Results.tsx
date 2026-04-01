@@ -191,7 +191,7 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
         <Text style={{ fontSize: "0.55rem", fontWeight: 600, color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Interfaces</Text>
         <InterfaceTable interfaces={appliance.interfaces} maxRows={maxInterfaceRows} />
       </Box>
-      {((matchDetails.interfaces && matchDetails.interfaces.matches.length > 0) || result.haInterfaceMapping) && (
+      {((matchDetails.interfaces && matchDetails.interfaces.matches.length > 0) || result.haInterfaceMapping || result.cellularInterfaceMapping) && (
         <Box mb="sm" style={{ minHeight: maxCircuitRows * 30 + 18 }}>
           <Text style={{ fontSize: "0.55rem", fontWeight: 600, color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Interface Mapping</Text>
           <Box style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -228,11 +228,26 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
                 </Box>
               );
             })()}
+            {result.cellularInterfaceMapping && (() => {
+              const cellColors = { bg: "rgba(238,124,19,0.08)", text: "#EE7C13" };
+              return (
+                <Box style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
+                  backgroundColor: cellColors.bg,
+                }}>
+                  <IconCheck size={10} color={cellColors.text} style={{ flexShrink: 0 }} />
+                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>Cellular</Text>
+                  <Text span c="dimmed">·</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>{result.cellularInterfaceMapping.type.includes("Built-in") ? "Built-in modem" : "External gateway"}</Text>
+                  <Text span ml="auto" style={{ fontSize: "0.6rem", color: cellColors.text, flexShrink: 0 }}>→ {result.cellularInterfaceMapping.type}</Text>
+                </Box>
+              );
+            })()}
           </Box>
         </Box>
       )}
       {result.haNote && !result.haInterfaceMapping && <NoteBox emoji="🔁" text={result.haNote} color="#014C71" />}
-      {result.cellularNote && <NoteBox emoji="📱" text={result.cellularNote} color="#EE7C13" />}
+      {result.cellularNote && !result.cellularInterfaceMapping && <NoteBox emoji="📱" text={result.cellularNote} color="#EE7C13" />}
       {result.wifiNote && <NoteBox emoji="📶" text={result.wifiNote} color="#EE7C13" />}
       {result.poeNote && <NoteBox emoji="🔋" text={result.poeNote} color="#EE7C13" />}
     </Paper>
@@ -348,7 +363,7 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
           <InterfaceTable interfaces={appliance.interfaces} />
         </Box>
       )}
-      {isGrowthPick && ((result.matchDetails.interfaces && result.matchDetails.interfaces.matches.length > 0) || result.haInterfaceMapping) && (
+      {isGrowthPick && ((result.matchDetails.interfaces && result.matchDetails.interfaces.matches.length > 0) || result.haInterfaceMapping || result.cellularInterfaceMapping) && (
         <Box mb={8}>
           <Text style={{ fontSize: "0.55rem", fontWeight: 600, color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Interface Mapping</Text>
           <Box style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -382,6 +397,21 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
                   <Text span c="dimmed">·</Text>
                   <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>Order 2 units</Text>
                   <Text span ml="auto" style={{ fontSize: "0.6rem", color: haColors.text, flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
+                </Box>
+              );
+            })()}
+            {result.cellularInterfaceMapping && (() => {
+              const cellColors = { bg: "rgba(238,124,19,0.08)", text: "#EE7C13" };
+              return (
+                <Box style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
+                  backgroundColor: cellColors.bg,
+                }}>
+                  <IconCheck size={10} color={cellColors.text} style={{ flexShrink: 0 }} />
+                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>Cellular</Text>
+                  <Text span c="dimmed">·</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>{result.cellularInterfaceMapping.type.includes("Built-in") ? "Built-in modem" : "External gateway"}</Text>
+                  <Text span ml="auto" style={{ fontSize: "0.6rem", color: cellColors.text, flexShrink: 0 }}>→ {result.cellularInterfaceMapping.type}</Text>
                 </Box>
               );
             })()}

@@ -37,6 +37,7 @@ export interface ScoredAppliance {
   failureReasons: string[];
   matchDetails: MatchDetails;
   cellularNote: string | null;
+  cellularInterfaceMapping: { type: string; purpose: string } | null;
   wifiNote: string | null;
   poeNote: string | null;
   haNote: string | null;
@@ -256,9 +257,29 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
       }
     }
 
-    // Calculate interface score with HA counted as an additional required interface
-    const totalRequiredInterfaces = criteria.circuits.length + (haRequiresPhysicalPort ? 1 : 0);
-    const totalMatchedInterfaces = matchedCount + (haRequiresPhysicalPort && haInterfaceMatched ? 1 : 0);
+    // Cellular interface integration: when cellular is requested, count as an additional required interface
+    let cellularInterfaceMatched = false;
+    let cellularRequiresInterface = false;
+    const cellularRequestedForScoring = criteria.features.includes("lte_failover");
+    if (cellularRequestedForScoring) {
+      cellularRequiresInterface = true;
+      if (appliance.cellularBuiltIn) {
+        // Device has built-in cellular modem — direct match
+        cellularInterfaceMatched = true;
+      } else {
+        // No built-in cellular — check if an available WAN RJ45 port exists for external gateway
+        // Look for remaining WAN pool RJ45 ports after circuit allocation
+        const remainingWanRJ45 = wanPool.filter(p => p.remaining > 0 && (p.type === "GE RJ45" || p.type.includes("mGig") || p.type.includes("RJ45"))).reduce((t, p) => t + p.remaining, 0);
+        const remainingLanRJ45 = lanPool.filter(p => p.remaining > 0 && (p.type === "GE RJ45" || p.type.includes("mGig") || p.type.includes("RJ45"))).reduce((t, p) => t + p.remaining, 0);
+        if (remainingWanRJ45 > 0 || remainingLanRJ45 > 0) {
+          cellularInterfaceMatched = true;
+        }
+      }
+    }
+
+    // Calculate interface score with HA and cellular counted as additional required interfaces
+    const totalRequiredInterfaces = criteria.circuits.length + (haRequiresPhysicalPort ? 1 : 0) + (cellularRequiresInterface ? 1 : 0);
+    const totalMatchedInterfaces = matchedCount + (haRequiresPhysicalPort && haInterfaceMatched ? 1 : 0) + (cellularRequiresInterface && cellularInterfaceMatched ? 1 : 0);
     let interfaceScore = (totalMatchedInterfaces / totalRequiredInterfaces) * WEIGHTS.interfaceMatch;
 
     // Small penalty when FortiLink ports are used as WAN (2% per FortiLink port used)
@@ -267,7 +288,7 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
       interfaceScore *= Math.max(fortiLinkPenalty, 0.9); // Floor at 90% of interface score
     }
 
-    allInterfacesMatched = allInterfacesMatched && (!haRequiresPhysicalPort || haInterfaceMatched);
+    allInterfacesMatched = allInterfacesMatched && (!haRequiresPhysicalPort || haInterfaceMatched) && (!cellularRequiresInterface || cellularInterfaceMatched);
 
     totalScore += interfaceScore;
     maxPossibleScore += WEIGHTS.interfaceMatch;
@@ -450,13 +471,29 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
   }
 
   // --- PREFERRED: Cellular ---
-  const cellularRequested = criteria.features.includes("lte_failover");
+  const cellularRequestedPref = criteria.features.includes("lte_failover");
   let cellularNote: string | null = null;
+  let cellularInterfaceMapping: { type: string; purpose: string } | null = null;
   let cellularMet = true;
 
-  if (cellularRequested && !appliance.cellularBuiltIn) {
-    cellularMet = false;
-    cellularNote = "This model does not have a built-in cellular modem. Pair with an external cellular gateway (e.g. Meraki MG, Cradlepoint) connected to a WAN RJ45 port.";
+  if (cellularRequestedPref) {
+    if (appliance.cellularBuiltIn) {
+      // Device has built-in cellular modem — direct match
+      cellularInterfaceMapping = { type: "Built-in 5G/LTE", purpose: "Cellular" };
+    } else {
+      cellularMet = false;
+      cellularNote = "No built-in cellular — pair with external cellular gateway";
+      // Map external gateway to an available WAN RJ45 port
+      const availableWanRJ45 = appliance.interfaces.find(iface => {
+        const p = iface.purpose.toLowerCase();
+        return p.includes("wan") && (iface.type === "GE RJ45" || iface.type.includes("mGig") || iface.type.includes("RJ45"));
+      });
+      if (availableWanRJ45) {
+        cellularInterfaceMapping = { type: `${availableWanRJ45.type} (External Gateway)`, purpose: "Cellular" };
+      } else {
+        cellularInterfaceMapping = null;
+      }
+    }
   }
 
   // --- Feature scoring (for percentage display) ---
@@ -501,6 +538,7 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
     failureReasons,
     matchDetails,
     cellularNote,
+    cellularInterfaceMapping,
     wifiNote,
     poeNote,
     haNote,
@@ -541,6 +579,20 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
     return false;
   };
 
+  // Cellular-variant filter: when cellular is NOT requested, exclude cellular-specific variants
+  const cellularRequested = criteria.features.includes("lte_failover");
+  const isCellularVariant = (appliance: Appliance): boolean => {
+    // FortiGate 50G-5G — cellular variant of 50G
+    if (appliance.model === "FortiGate 50G-5G") return true;
+    // MX67C — cellular variant of MX67
+    if (appliance.model === "MX67C") return true;
+    // MX68CW — already suppressed as WiFi variant, but mark cellular too
+    if (appliance.model === "MX68CW") return true;
+    // Edge 710-5G — cellular variant of 710-W
+    if (appliance.model === "Edge 710-5G") return true;
+    return false;
+  };
+
   for (const [vendor, vendorAppliances] of vendorMap) {
     // Split into hard matches and non-matching, then filter WiFi variants if not requested
     let hardMatches = vendorAppliances
@@ -564,6 +616,14 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
       const poeVariantsFromHard = hardMatches.filter(s => isPoeVariant(s.appliance));
       hardMatches = hardMatches.filter(s => !isPoeVariant(s.appliance));
       nonMatching = [...nonMatching, ...poeVariantsFromHard]
+        .sort((resultA, resultB) => resultB.percentageScore - resultA.percentageScore);
+    }
+
+    // When cellular is NOT requested, move cellular-specific variants from hardMatches to nonMatching
+    if (!cellularRequested) {
+      const cellularVariantsFromHard = hardMatches.filter(s => isCellularVariant(s.appliance));
+      hardMatches = hardMatches.filter(s => !isCellularVariant(s.appliance));
+      nonMatching = [...nonMatching, ...cellularVariantsFromHard]
         .sort((resultA, resultB) => resultB.percentageScore - resultA.percentageScore);
     }
 
@@ -678,13 +738,7 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
         recommended = bestFit;
         oversizedAlternative = fullMatch;
 
-        // Enhance notes on the recommended model to reference the oversized alternative
-        if (recommended.cellularNote) {
-          recommended = {
-            ...recommended,
-            cellularNote: `${recommended.cellularNote} The nearest model with built-in cellular is the ${fullMatch.appliance.model}, but it may be oversized for this site.`,
-          };
-        }
+        // Oversized alternative reference removed — cellular note is handled separately
       }
     } else {
       // No model meets all preferred at any size — recommend best-fit
