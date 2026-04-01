@@ -85,18 +85,40 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
       </Text>
       <Box style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <Box>
-          <Text fw={700} size="md" c="dark">{appliance.model}</Text>
+          <Box style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Text fw={700} size="md" c="dark">{appliance.model}</Text>
+            {appliance.endOfSale && (
+              <Text span style={{
+                fontSize: "0.5rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em",
+                backgroundColor: "#FFF3BF", color: "#E67700",
+                padding: "1px 6px", borderRadius: 99, whiteSpace: "nowrap",
+              }}>
+                ⚠️ EoS {appliance.endOfSale}
+              </Text>
+            )}
+          </Box>
           <Text style={{ fontSize: "0.6rem", color: "#adb5bd" }}>{appliance.category}</Text>
         </Box>
-        {appliance.features.length > 0 && (
-          <Group gap={4} wrap="wrap" justify="flex-end" style={{ flexShrink: 0 }}>
-            {appliance.features.map(fid => (
-              <Text key={fid} span style={{ fontSize: "0.55rem", fontWeight: 600, padding: "2px 6px", borderRadius: 99, backgroundColor: "rgba(1,76,113,0.08)", color: "#014C71" }}>
-                {featureMap[fid] || fid}
-              </Text>
-            ))}
-          </Group>
-        )}
+        <Box style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+          <ScoreTooltip result={result} featureMap={featureMap}>
+            <Text span style={{
+              fontSize: "0.65rem", fontWeight: 700, padding: "2px 8px", borderRadius: 99, cursor: "help",
+              backgroundColor: result.percentageScore >= 75 ? "rgba(14,135,66,0.08)" : result.percentageScore >= 50 ? "rgba(238,124,19,0.08)" : "rgba(255,107,107,0.08)",
+              color: result.percentageScore >= 75 ? "#0E8742" : result.percentageScore >= 50 ? "#EE7C13" : "#e03131",
+            }}>
+              {result.percentageScore}%
+            </Text>
+          </ScoreTooltip>
+          {appliance.features.length > 0 && (
+            <Group gap={4} wrap="wrap" justify="flex-end">
+              {appliance.features.map(fid => (
+                <Text key={fid} span style={{ fontSize: "0.55rem", fontWeight: 600, padding: "2px 6px", borderRadius: 99, backgroundColor: "rgba(1,76,113,0.08)", color: "#014C71" }}>
+                  {featureMap[fid] || fid}
+                </Text>
+              ))}
+            </Group>
+          )}
+        </Box>
       </Box>
       <SimpleGrid cols={3} spacing={6} mb="sm">
         {[
