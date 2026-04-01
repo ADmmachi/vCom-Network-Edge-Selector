@@ -120,7 +120,7 @@ function InterfaceTable({ interfaces, maxRows }: { interfaces: ApplianceInterfac
 function NoteBox({ emoji, text, color }: { emoji: string; text: string; color: string }) {
   return (
     <Box style={{ display: "flex", alignItems: "flex-start", gap: 6, backgroundColor: `${color}08`, borderRadius: 4, padding: "6px 8px", marginBottom: 6, fontSize: "0.6rem", color }}>
-      <Text span style={{ flexShrink: 0 }}>{emoji}</Text>
+      <Text span style={{ flexShrink: 0, fontSize: "0.5rem", lineHeight: 1.2 }}>{emoji}</Text>
       <Text span style={{ fontSize: "0.6rem", color }}>{text}</Text>
     </Box>
   );
