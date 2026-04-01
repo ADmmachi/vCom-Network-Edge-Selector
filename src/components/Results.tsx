@@ -173,11 +173,11 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
         <Text style={{ fontSize: "0.55rem", fontWeight: 600, color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Interfaces</Text>
         <InterfaceTable interfaces={appliance.interfaces} maxRows={maxInterfaceRows} />
       </Box>
-      {matchDetails.interfaces && matchDetails.interfaces.matches.length > 0 && (
+      {((matchDetails.interfaces && matchDetails.interfaces.matches.length > 0) || result.haInterfaceMapping) && (
         <Box mb="sm" style={{ minHeight: maxCircuitRows * 30 + 18 }}>
-          <Text style={{ fontSize: "0.55rem", fontWeight: 600, color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Circuit Matching</Text>
+          <Text style={{ fontSize: "0.55rem", fontWeight: 600, color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Interface Mapping</Text>
           <Box style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {matchDetails.interfaces.matches.map(match => {
+            {(matchDetails.interfaces?.matches ?? []).map(match => {
               const ctName = circuitTypes.find(ct => ct.id === match.circuitTypeId)?.name ?? match.circuitTypeId;
               return (
                 <Box key={match.circuitId} style={{
@@ -192,10 +192,22 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
                 </Box>
               );
             })}
+            {result.haInterfaceMapping && (
+              <Box style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
+                backgroundColor: "rgba(1,76,113,0.04)",
+              }}>
+                <IconCheck size={10} color="#014C71" style={{ flexShrink: 0 }} />
+                <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>HA Peering</Text>
+                <Text span c="dimmed">·</Text>
+                <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>{result.haNote}</Text>
+                <Text span ml="auto" style={{ fontSize: "0.6rem", color: "#014C71", flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
+              </Box>
+            )}
           </Box>
         </Box>
       )}
-      {result.haNote && <NoteBox emoji="🔁" text={result.haNote} color="#014C71" />}
+      {result.haNote && !result.haInterfaceMapping && <NoteBox emoji="🔁" text={result.haNote} color="#014C71" />}
       {result.cellularNote && <NoteBox emoji="📱" text={result.cellularNote} color="#EE7C13" />}
       {result.wifiNote && <NoteBox emoji="📶" text={result.wifiNote} color="#EE7C13" />}
       {result.poeNote && <NoteBox emoji="🔋" text={result.poeNote} color="#EE7C13" />}

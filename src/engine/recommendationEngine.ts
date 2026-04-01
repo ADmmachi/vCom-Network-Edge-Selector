@@ -40,6 +40,7 @@ export interface ScoredAppliance {
   wifiNote: string | null;
   poeNote: string | null;
   haNote: string | null;
+  haInterfaceMapping: { type: string; purpose: string } | null;
 }
 
 export interface VendorRecommendation {
@@ -288,6 +289,7 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
   // --- HARD: HA peering ---
   let haNote: string | null = null;
   let haMet = true;
+  let haInterfaceMapping: { type: string; purpose: string } | null = null;
 
   if (criteria.requireHA) {
     const haInterfaces = appliance.interfaces.filter(
@@ -296,28 +298,29 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
     const haPortCount = haInterfaces.reduce((total, iface) => total + iface.quantity, 0);
 
     if (haPortCount > 0) {
-      haNote = `HA Pair — Order Qty: 2. This model has ${haPortCount} dedicated HA port${haPortCount !== 1 ? "s" : ""} for peering.`;
+      haNote = "Order 2 units · Dedicated HA port for peering";
+      haInterfaceMapping = { type: haInterfaces[0].type, purpose: "HA" };
     } else {
       // Count pure LAN ports
-      const pureLanPorts = appliance.interfaces
+      const pureLanInterfaces = appliance.interfaces
         .filter(iface => {
           const purposeLower = iface.purpose.toLowerCase();
           return purposeLower.includes("lan") && !purposeLower.includes("wan");
-        })
-        .reduce((total, iface) => total + iface.quantity, 0);
+        });
+      const pureLanPorts = pureLanInterfaces.reduce((total, iface) => total + iface.quantity, 0);
 
       // Count dual-purpose LAN/WAN ports (e.g., VeloCloud)
-      const dualPurposePorts = appliance.interfaces
+      const dualPurposeInterfaces = appliance.interfaces
         .filter(iface => {
           const purposeLower = iface.purpose.toLowerCase();
           return purposeLower.includes("lan") && purposeLower.includes("wan");
-        })
-        .reduce((total, iface) => total + iface.quantity, 0);
+        });
+      const dualPurposePorts = dualPurposeInterfaces.reduce((total, iface) => total + iface.quantity, 0);
 
       // Count FortiLink ports (can serve as LAN, including for HA peering)
-      const fortiLinkPorts = appliance.interfaces
-        .filter(iface => iface.purpose.toLowerCase() === "fortilink")
-        .reduce((total, iface) => total + iface.quantity, 0);
+      const fortiLinkInterfaces = appliance.interfaces
+        .filter(iface => iface.purpose.toLowerCase() === "fortilink");
+      const fortiLinkPorts = fortiLinkInterfaces.reduce((total, iface) => total + iface.quantity, 0);
 
       // FortiLink ports already used as WAN are not available for HA
       const availableFortiLinkPorts = Math.max(0, fortiLinkPorts - fortiLinkUsedAsWan);
@@ -334,18 +337,24 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
       const isVeloCloud = appliance.vendor === "VeloCloud";
 
       if (isMeraki) {
-        haNote = "HA Pair — Order Qty: 2. Meraki uses warm spare HA via cloud dashboard — no dedicated peering link required between units.";
+        haNote = "Order 2 units · Cloud-managed warm spare — no peering link required";
+        haInterfaceMapping = { type: "Cloud Dashboard", purpose: "HA (Warm Spare)" };
       } else if (isVeloCloud && totalAvailableLanPorts >= 1) {
-        haNote = `HA Pair — Order Qty: 2. VeloCloud Active/Standby — connect units via any available RJ45 interface for HA heartbeat (${totalAvailableLanPorts} port${totalAvailableLanPorts !== 1 ? "s" : ""} available, ${totalAvailableLanPorts - 1} remaining after HA).`;
+        const haIface = dualPurposeInterfaces[0] || pureLanInterfaces[0];
+        haNote = "Order 2 units · Active/Standby via RJ45 HA heartbeat";
+        haInterfaceMapping = haIface ? { type: haIface.type, purpose: "HA Heartbeat" } : null;
       } else if (pureLanPorts >= 1) {
-        haNote = `HA Pair — Order Qty: 2. No dedicated HA port — 1 LAN port will be used for HA peering (${pureLanPorts} LAN ports available, ${pureLanPorts - 1} remaining after HA).`;
+        haNote = "Order 2 units · 1 LAN port used for HA peering";
+        haInterfaceMapping = pureLanInterfaces[0] ? { type: pureLanInterfaces[0].type, purpose: "HA Peering" } : null;
       } else if (availableDualPorts >= 1) {
-        haNote = `HA Pair — Order Qty: 2. No dedicated HA port — 1 LAN/WAN port will be used for HA peering (${availableDualPorts} available after WAN assignments, ${availableDualPorts - 1} remaining after HA).`;
+        haNote = "Order 2 units · 1 LAN/WAN port used for HA peering";
+        haInterfaceMapping = dualPurposeInterfaces[0] ? { type: dualPurposeInterfaces[0].type, purpose: "HA Peering" } : null;
       } else if (availableFortiLinkPorts >= 1) {
-        haNote = `HA Pair — Order Qty: 2. No dedicated HA port — 1 FortiLink port will be used for HA peering (${availableFortiLinkPorts} FortiLink port${availableFortiLinkPorts !== 1 ? "s" : ""} available, ${availableFortiLinkPorts - 1} remaining after HA).`;
+        haNote = "Order 2 units · 1 FortiLink port used for HA peering";
+        haInterfaceMapping = fortiLinkInterfaces[0] ? { type: fortiLinkInterfaces[0].type, purpose: "HA Peering" } : null;
       } else {
         haMet = false;
-        haNote = "HA Pair — Order Qty: 2. No dedicated HA port and no available port for HA peering.";
+        haNote = "Order 2 units · No available interface for HA peering";
         failureReasons.push("No available interface for HA peering");
       }
     }
@@ -432,6 +441,7 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
     wifiNote,
     poeNote,
     haNote,
+    haInterfaceMapping,
   };
 }
 
