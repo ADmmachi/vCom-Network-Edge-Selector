@@ -65,7 +65,7 @@ export function getDownloadOptions(circuitTypeId: string): BandwidthOption[] {
       { label: "200 Mbps", valueMbps: 200 },
       { label: "500 Mbps", valueMbps: 500 },
       { label: "1 Gbps", valueMbps: 1000 },
-      { label: "2.5 Gbps", valueMbps: 2500 },
+      { label: "2 Gbps", valueMbps: 2000 },
       { label: "5 Gbps", valueMbps: 5000 },
       { label: "10 Gbps", valueMbps: 10000 },
     ];
