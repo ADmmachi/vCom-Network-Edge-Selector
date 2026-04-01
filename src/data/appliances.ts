@@ -39,7 +39,6 @@ const STANDARD_DOWNLOAD_OPTIONS: BandwidthOption[] = [
   { label: "500 Mbps", valueMbps: 500 },
   { label: "1 Gbps", valueMbps: 1000 },
   { label: "2 Gbps", valueMbps: 2000 },
-  { label: "5 Gbps", valueMbps: 5000 },
 ];
 
 const STANDARD_UPLOAD_OPTIONS: BandwidthOption[] = [
@@ -67,7 +66,6 @@ export function getDownloadOptions(circuitTypeId: string): BandwidthOption[] {
       { label: "500 Mbps", valueMbps: 500 },
       { label: "1 Gbps", valueMbps: 1000 },
       { label: "2.5 Gbps", valueMbps: 2500 },
-      { label: "5 Gbps", valueMbps: 5000 },
       { label: "10 Gbps", valueMbps: 10000 },
     ];
   }
@@ -154,6 +152,7 @@ export const handoffTypes: HandoffType[] = [
   { id: "fiber_smf_lc", name: "1GbE Single-Mode (SMF/LC)", interfaceType: "GE SFP" },
   { id: "fiber_mmf_lc", name: "1GbE Multi-Mode (MMF/LC)", interfaceType: "GE SFP" },
   { id: "mgig_2_5g", name: "2.5GbE mGig Copper (RJ45)", interfaceType: "2.5G mGig RJ45" },
+  { id: "copper_10g_rj45", name: "10GbE Copper (RJ45)", interfaceType: "10G RJ45" },
   { id: "fiber_10g_smf", name: "10GbE Single-Mode (SMF/LC)", interfaceType: "10GE SFP+" },
   { id: "fiber_10g_mmf", name: "10GbE Multi-Mode (MMF/LC)", interfaceType: "10GE SFP+" },
 ];
@@ -169,6 +168,7 @@ export function getHandoffMaxSpeed(handoffId: string): number {
       return 1000;
     case "mgig_2_5g":
       return 2500;
+    case "copper_10g_rj45":
     case "fiber_10g_smf":
     case "fiber_10g_mmf":
       return 10000;
@@ -196,6 +196,7 @@ export function getDefaultHandoff(circuitTypeId: string, bandwidthMbps: number):
     case "broadband_fiber":
     case "broadband_cable":
     case "other":
+      if (bandwidthMbps > 2500) return "copper_10g_rj45";
       if (bandwidthMbps > 1000) return "mgig_2_5g";
       return "copper_rj45";
     default:
@@ -214,11 +215,11 @@ export function getHandoffOptionsForCircuitType(circuitTypeId: string): HandoffT
       );
     case "broadband_fiber":
       return handoffTypes.filter(handoff =>
-        ["copper_rj45", "mgig_2_5g", "fiber_smf_lc", "fiber_mmf_lc"].includes(handoff.id)
+        ["copper_rj45", "mgig_2_5g", "copper_10g_rj45", "fiber_smf_lc", "fiber_mmf_lc"].includes(handoff.id)
       );
     case "broadband_cable":
       return handoffTypes.filter(handoff =>
-        ["copper_rj45", "mgig_2_5g"].includes(handoff.id)
+        ["copper_rj45", "mgig_2_5g", "copper_10g_rj45"].includes(handoff.id)
       );
     case "fixed_wireless":
     case "starlink":

@@ -84,6 +84,12 @@ function interfaceCanServeHandoff(applianceInterfaceType: string, requiredType: 
     if (applianceInterfaceType === "10GE SFP+" || applianceInterfaceType === "25GE SFP28" || applianceInterfaceType === "40GE QSFP") return true;
   }
 
+  // 10G RJ45 can be served by 10G+ copper/mGig or SFP+ and higher interfaces
+  if (requiredType === "10G RJ45") {
+    if (applianceInterfaceType === "10GE SFP+" || applianceInterfaceType === "25GE SFP28" || applianceInterfaceType === "40GE QSFP") return true;
+    if (applianceInterfaceType.includes("mGig") && applianceInterfaceType.includes("10G")) return true;
+  }
+
   if (requiredType === "GE SFP" && applianceInterfaceType === "10GE SFP+") return true;
 
   if (requiredType === "10GE SFP+") {
