@@ -298,7 +298,7 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
     const haPortCount = haInterfaces.reduce((total, iface) => total + iface.quantity, 0);
 
     if (haPortCount > 0) {
-      haNote = "Order 2 units · Dedicated HA port for peering";
+      haNote = "Order 2 units";
       haInterfaceMapping = { type: haInterfaces[0].type, purpose: "HA" };
     } else {
       // Count pure LAN ports
@@ -337,24 +337,24 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
       const isVeloCloud = appliance.vendor === "VeloCloud";
 
       if (isMeraki) {
-        haNote = "Order 2 units · Cloud-managed warm spare — no peering link required";
-        haInterfaceMapping = { type: "Cloud Dashboard", purpose: "HA (Warm Spare)" };
+        haNote = "Order 2 units · Cloud-managed warm spare";
+        haInterfaceMapping = { type: "Cloud-Managed", purpose: "HA (Warm Spare)" };
       } else if (isVeloCloud && totalAvailableLanPorts >= 1) {
         const haIface = dualPurposeInterfaces[0] || pureLanInterfaces[0];
-        haNote = "Order 2 units · Active/Standby via RJ45 HA heartbeat";
+        haNote = "Order 2 units";
         haInterfaceMapping = haIface ? { type: haIface.type, purpose: "HA Heartbeat" } : null;
       } else if (pureLanPorts >= 1) {
-        haNote = "Order 2 units · 1 LAN port used for HA peering";
+        haNote = "Order 2 units";
         haInterfaceMapping = pureLanInterfaces[0] ? { type: pureLanInterfaces[0].type, purpose: "HA Peering" } : null;
       } else if (availableDualPorts >= 1) {
-        haNote = "Order 2 units · 1 LAN/WAN port used for HA peering";
+        haNote = "Order 2 units";
         haInterfaceMapping = dualPurposeInterfaces[0] ? { type: dualPurposeInterfaces[0].type, purpose: "HA Peering" } : null;
       } else if (availableFortiLinkPorts >= 1) {
-        haNote = "Order 2 units · 1 FortiLink port used for HA peering";
+        haNote = "Order 2 units";
         haInterfaceMapping = fortiLinkInterfaces[0] ? { type: fortiLinkInterfaces[0].type, purpose: "HA Peering" } : null;
       } else {
         haMet = false;
-        haNote = "Order 2 units · No available interface for HA peering";
+        haNote = "Order 2 units · No available HA port";
         failureReasons.push("No available interface for HA peering");
       }
     }

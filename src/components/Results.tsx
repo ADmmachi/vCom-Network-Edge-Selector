@@ -200,7 +200,7 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
                 <IconCheck size={10} color="#014C71" style={{ flexShrink: 0 }} />
                 <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>HA Peering</Text>
                 <Text span c="dimmed">·</Text>
-                <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>{result.haNote}</Text>
+                <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>Order 2 units</Text>
                 <Text span ml="auto" style={{ fontSize: "0.6rem", color: "#014C71", flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
               </Box>
             )}
