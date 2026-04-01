@@ -326,6 +326,40 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
           <InterfaceTable interfaces={appliance.interfaces} />
         </Box>
       )}
+      {isGrowthPick && ((result.matchDetails.interfaces && result.matchDetails.interfaces.matches.length > 0) || result.haInterfaceMapping) && (
+        <Box mb={8}>
+          <Text style={{ fontSize: "0.55rem", fontWeight: 600, color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Interface Mapping</Text>
+          <Box style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {(result.matchDetails.interfaces?.matches ?? []).map(match => {
+              const ctName = circuitTypes.find(ct => ct.id === match.circuitTypeId)?.name ?? match.circuitTypeId;
+              return (
+                <Box key={match.circuitId} style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
+                  backgroundColor: match.isMatched ? "rgba(14,135,66,0.04)" : "rgba(255,107,107,0.04)",
+                }}>
+                  {match.isMatched ? <IconCheck size={10} color="#0E8742" style={{ flexShrink: 0 }} /> : <IconX size={10} color="#e03131" style={{ flexShrink: 0 }} />}
+                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>{ctName}</Text>
+                  <Text span c="dimmed">·</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>{formatThroughput(match.bandwidthMbps)}</Text>
+                  {match.isMatched && <Text span ml="auto" style={{ fontSize: "0.6rem", color: "#0E8742", flexShrink: 0 }}>→ {match.matchedApplianceInterface}</Text>}
+                </Box>
+              );
+            })}
+            {result.haInterfaceMapping && (
+              <Box style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
+                backgroundColor: "rgba(1,76,113,0.04)",
+              }}>
+                <IconCheck size={10} color="#014C71" style={{ flexShrink: 0 }} />
+                <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>HA Peering</Text>
+                <Text span c="dimmed">·</Text>
+                <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>Order 2 units</Text>
+                <Text span ml="auto" style={{ fontSize: "0.6rem", color: "#014C71", flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
+              </Box>
+            )}
+          </Box>
+        </Box>
+      )}
       {isNonMatching && result.failureReasons.length > 0 && (
         <Box pt={8} style={{ borderTop: "1px solid #f1f3f5" }}>
           {result.failureReasons.map((reason, i) => (
