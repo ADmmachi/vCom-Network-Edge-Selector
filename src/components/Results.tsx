@@ -65,6 +65,22 @@ function isBaseModel(model: string, vendor: string, selectedFeatures: string[]):
   return true;
 }
 
+function getInterfacePurposeColors(interfaceStr: string | null | undefined, isHA?: boolean): { bg: string; text: string } {
+  if (!interfaceStr) return { bg: "rgba(255,107,107,0.04)", text: "#e03131" }; // unmatched / failure
+  if (isHA) {
+    // HA dedicated port → purple, LAN port used for HA → green, LAN/WAN → grey, FortiLink → grey
+    if (interfaceStr.includes("(HA)")) return { bg: "rgba(62,26,128,0.08)", text: "#3E1A80" };
+    if (interfaceStr.includes("(LAN)") && !interfaceStr.includes("WAN")) return { bg: "rgba(14,135,66,0.08)", text: "#0E8742" };
+    if (interfaceStr.includes("(LAN/WAN)") || interfaceStr.includes("FortiLink")) return { bg: "#f1f3f5", text: "#868e96" };
+    return { bg: "rgba(62,26,128,0.08)", text: "#3E1A80" }; // default HA to purple
+  }
+  // WAN circuit matches — determine color from the mapped interface purpose
+  if (interfaceStr.includes("(WAN)") && !interfaceStr.includes("LAN")) return { bg: "rgba(1,76,113,0.08)", text: "#014C71" };
+  if (interfaceStr.includes("(LAN)") && !interfaceStr.includes("WAN")) return { bg: "rgba(14,135,66,0.08)", text: "#0E8742" };
+  if (interfaceStr.includes("(LAN/WAN)")) return { bg: "#f1f3f5", text: "#868e96" };
+  return { bg: "rgba(1,76,113,0.08)", text: "#014C71" }; // default WAN circuit mapping to teal
+}
+
 function InterfaceTable({ interfaces, maxRows }: { interfaces: ApplianceInterface[]; maxRows?: number }) {
   return (
     <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, overflow: "hidden" }}>
@@ -181,31 +197,37 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
           <Box style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {(matchDetails.interfaces?.matches ?? []).map(match => {
               const ctName = circuitTypes.find(ct => ct.id === match.circuitTypeId)?.name ?? match.circuitTypeId;
+              const colors = match.isMatched
+                ? getInterfacePurposeColors(match.matchedApplianceInterface)
+                : getInterfacePurposeColors(undefined);
               return (
                 <Box key={match.circuitId} style={{
                   display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
-                  backgroundColor: match.isMatched ? "rgba(14,135,66,0.04)" : "rgba(255,107,107,0.04)",
+                  backgroundColor: colors.bg,
                 }}>
-                  {match.isMatched ? <IconCheck size={10} color="#0E8742" style={{ flexShrink: 0 }} /> : <IconX size={10} color="#e03131" style={{ flexShrink: 0 }} />}
+                  {match.isMatched ? <IconCheck size={10} color={colors.text} style={{ flexShrink: 0 }} /> : <IconX size={10} color="#e03131" style={{ flexShrink: 0 }} />}
                   <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>{ctName}</Text>
                   <Text span c="dimmed">·</Text>
                   <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>{formatThroughput(match.bandwidthMbps)}</Text>
-                  {match.isMatched && <Text span ml="auto" style={{ fontSize: "0.6rem", color: "#0E8742", flexShrink: 0 }}>→ {match.matchedApplianceInterface}</Text>}
+                  {match.isMatched && <Text span ml="auto" style={{ fontSize: "0.6rem", color: colors.text, flexShrink: 0 }}>→ {match.matchedApplianceInterface}</Text>}
                 </Box>
               );
             })}
-            {result.haInterfaceMapping && (
-              <Box style={{
-                display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
-                backgroundColor: "rgba(1,76,113,0.04)",
-              }}>
-                <IconCheck size={10} color="#014C71" style={{ flexShrink: 0 }} />
-                <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>HA Peering</Text>
-                <Text span c="dimmed">·</Text>
-                <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>Order 2 units</Text>
-                <Text span ml="auto" style={{ fontSize: "0.6rem", color: "#014C71", flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
-              </Box>
-            )}
+            {result.haInterfaceMapping && (() => {
+              const haColors = getInterfacePurposeColors(result.haInterfaceMapping!.type, true);
+              return (
+                <Box style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
+                  backgroundColor: haColors.bg,
+                }}>
+                  <IconCheck size={10} color={haColors.text} style={{ flexShrink: 0 }} />
+                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>HA Peering</Text>
+                  <Text span c="dimmed">·</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>Order 2 units</Text>
+                  <Text span ml="auto" style={{ fontSize: "0.6rem", color: haColors.text, flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
+                </Box>
+              );
+            })()}
           </Box>
         </Box>
       )}
@@ -332,31 +354,37 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
           <Box style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {(result.matchDetails.interfaces?.matches ?? []).map(match => {
               const ctName = circuitTypes.find(ct => ct.id === match.circuitTypeId)?.name ?? match.circuitTypeId;
+              const colors = match.isMatched
+                ? getInterfacePurposeColors(match.matchedApplianceInterface)
+                : getInterfacePurposeColors(undefined);
               return (
                 <Box key={match.circuitId} style={{
                   display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
-                  backgroundColor: match.isMatched ? "rgba(14,135,66,0.04)" : "rgba(255,107,107,0.04)",
+                  backgroundColor: colors.bg,
                 }}>
-                  {match.isMatched ? <IconCheck size={10} color="#0E8742" style={{ flexShrink: 0 }} /> : <IconX size={10} color="#e03131" style={{ flexShrink: 0 }} />}
+                  {match.isMatched ? <IconCheck size={10} color={colors.text} style={{ flexShrink: 0 }} /> : <IconX size={10} color="#e03131" style={{ flexShrink: 0 }} />}
                   <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>{ctName}</Text>
                   <Text span c="dimmed">·</Text>
                   <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>{formatThroughput(match.bandwidthMbps)}</Text>
-                  {match.isMatched && <Text span ml="auto" style={{ fontSize: "0.6rem", color: "#0E8742", flexShrink: 0 }}>→ {match.matchedApplianceInterface}</Text>}
+                  {match.isMatched && <Text span ml="auto" style={{ fontSize: "0.6rem", color: colors.text, flexShrink: 0 }}>→ {match.matchedApplianceInterface}</Text>}
                 </Box>
               );
             })}
-            {result.haInterfaceMapping && (
-              <Box style={{
-                display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
-                backgroundColor: "rgba(1,76,113,0.04)",
-              }}>
-                <IconCheck size={10} color="#014C71" style={{ flexShrink: 0 }} />
-                <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>HA Peering</Text>
-                <Text span c="dimmed">·</Text>
-                <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>Order 2 units</Text>
-                <Text span ml="auto" style={{ fontSize: "0.6rem", color: "#014C71", flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
-              </Box>
-            )}
+            {result.haInterfaceMapping && (() => {
+              const haColors = getInterfacePurposeColors(result.haInterfaceMapping!.type, true);
+              return (
+                <Box style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
+                  backgroundColor: haColors.bg,
+                }}>
+                  <IconCheck size={10} color={haColors.text} style={{ flexShrink: 0 }} />
+                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>HA Peering</Text>
+                  <Text span c="dimmed">·</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>Order 2 units</Text>
+                  <Text span ml="auto" style={{ fontSize: "0.6rem", color: haColors.text, flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
+                </Box>
+              );
+            })()}
           </Box>
         </Box>
       )}
