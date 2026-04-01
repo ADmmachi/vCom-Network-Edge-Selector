@@ -432,10 +432,10 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
     const availablePoePorts = countAppliancePoePorts(appliance);
     if (availablePoePorts === 0) {
       poeMet = false;
-      poeNote = `This model does not have PoE ports. Pair with an external PoE switch to power your ${criteria.requiredPoePorts} device${criteria.requiredPoePorts !== 1 ? "s" : ""}.`;
+      poeNote = "No PoE — pair with external PoE switch";
     } else if (availablePoePorts < criteria.requiredPoePorts) {
       poeMet = false;
-      poeNote = `This model has ${availablePoePorts} PoE port${availablePoePorts !== 1 ? "s" : ""}, but you need ${criteria.requiredPoePorts}. Pair with a supplemental PoE switch for the remaining ${criteria.requiredPoePorts - availablePoePorts} device${(criteria.requiredPoePorts - availablePoePorts) !== 1 ? "s" : ""}.`;
+      poeNote = `Has ${availablePoePorts} PoE port${availablePoePorts !== 1 ? "s" : ""}, need ${criteria.requiredPoePorts} — pair with PoE switch for remaining ${criteria.requiredPoePorts - availablePoePorts}`;
     }
   }
 
@@ -533,6 +533,14 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
     return false;
   };
 
+  // PoE-variant filter: when PoE is NOT requested, exclude PoE-specific variants
+  const poeRequested = criteria.features.includes("poe") && criteria.requiredPoePorts > 0;
+  const isPoeVariant = (appliance: Appliance): boolean => {
+    // FortiGate 50G-SFP-PoE is the only PoE-specific variant
+    if (appliance.model === "FortiGate 50G-SFP-PoE") return true;
+    return false;
+  };
+
   for (const [vendor, vendorAppliances] of vendorMap) {
     // Split into hard matches and non-matching, then filter WiFi variants if not requested
     let hardMatches = vendorAppliances
@@ -548,6 +556,14 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
       const wifiVariantsFromHard = hardMatches.filter(s => isWifiVariant(s.appliance));
       hardMatches = hardMatches.filter(s => !isWifiVariant(s.appliance));
       nonMatching = [...nonMatching, ...wifiVariantsFromHard]
+        .sort((resultA, resultB) => resultB.percentageScore - resultA.percentageScore);
+    }
+
+    // When PoE is NOT requested, move PoE-specific variants from hardMatches to nonMatching
+    if (!poeRequested) {
+      const poeVariantsFromHard = hardMatches.filter(s => isPoeVariant(s.appliance));
+      hardMatches = hardMatches.filter(s => !isPoeVariant(s.appliance));
+      nonMatching = [...nonMatching, ...poeVariantsFromHard]
         .sort((resultA, resultB) => resultB.percentageScore - resultA.percentageScore);
     }
 
@@ -663,12 +679,6 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
         oversizedAlternative = fullMatch;
 
         // Enhance notes on the recommended model to reference the oversized alternative
-        if (recommended.poeNote) {
-          recommended = {
-            ...recommended,
-            poeNote: `${recommended.poeNote} The nearest model with built-in PoE is the ${fullMatch.appliance.model}, but it may be oversized for this site.`,
-          };
-        }
         if (recommended.cellularNote) {
           recommended = {
             ...recommended,
