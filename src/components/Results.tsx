@@ -53,6 +53,8 @@ function isBaseModel(model: string, vendor: string, selectedFeatures: string[]):
   }
 
   if (vendor === "VeloCloud") {
+    // Edge 710-W is always treated as base model (it's the standard desktop model)
+    if (model === "Edge 710-W") return true;
     // -W suffix = WiFi, non-base unless WiFi requested
     if (model.includes("-W") && !wifiRequested) return false;
     // -5G suffix = cellular, non-base unless cellular requested

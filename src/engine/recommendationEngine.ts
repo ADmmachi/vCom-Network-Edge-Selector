@@ -446,7 +446,7 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
 
   if (wifiRequested && !appliance.features.includes("wifi6")) {
     wifiMet = false;
-    wifiNote = "This model does not have a built-in wireless AP. Deploy a separate access point for Wi-Fi coverage.";
+    wifiNote = "No built-in Wi-Fi — pair with a separate AP";
   }
 
   // --- PREFERRED: Cellular ---
@@ -520,14 +520,36 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
 
   const vendorRecommendations: VendorRecommendation[] = [];
 
+  // WiFi-variant filter: when WiFi is NOT requested, exclude WiFi variants from recommendations
+  // Exception: VeloCloud Edge 710-W is always treated as a base model
+  const wifiRequested = criteria.features.includes("wifi6");
+  const isWifiVariant = (appliance: Appliance): boolean => {
+    // VeloCloud Edge 710-W is exempt — always treated as base
+    if (appliance.model === "Edge 710-W") return false;
+    // Fortinet FortiWiFi models
+    if (appliance.model.includes("FortiWiFi")) return true;
+    // Meraki W/CW suffix models
+    if (/W$|CW$/i.test(appliance.model)) return true;
+    return false;
+  };
+
   for (const [vendor, vendorAppliances] of vendorMap) {
-    const hardMatches = vendorAppliances
+    // Split into hard matches and non-matching, then filter WiFi variants if not requested
+    let hardMatches = vendorAppliances
       .filter(scored => scored.meetsHardCriteria)
       .sort((resultA, resultB) => resultB.totalScore - resultA.totalScore);
 
-    const nonMatching = vendorAppliances
+    let nonMatching = vendorAppliances
       .filter(scored => !scored.meetsHardCriteria)
       .sort((resultA, resultB) => resultB.percentageScore - resultA.percentageScore);
+
+    // When WiFi is NOT requested, move WiFi variants from hardMatches to nonMatching
+    if (!wifiRequested) {
+      const wifiVariantsFromHard = hardMatches.filter(s => isWifiVariant(s.appliance));
+      hardMatches = hardMatches.filter(s => !isWifiVariant(s.appliance));
+      nonMatching = [...nonMatching, ...wifiVariantsFromHard]
+        .sort((resultA, resultB) => resultB.percentageScore - resultA.percentageScore);
+    }
 
     if (hardMatches.length === 0) {
       vendorRecommendations.push({
@@ -645,12 +667,6 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
           recommended = {
             ...recommended,
             poeNote: `${recommended.poeNote} The nearest model with built-in PoE is the ${fullMatch.appliance.model}, but it may be oversized for this site.`,
-          };
-        }
-        if (recommended.wifiNote) {
-          recommended = {
-            ...recommended,
-            wifiNote: `${recommended.wifiNote} The nearest model with built-in Wi-Fi is the ${fullMatch.appliance.model}, but it may be oversized for this site.`,
           };
         }
         if (recommended.cellularNote) {
