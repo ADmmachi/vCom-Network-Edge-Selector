@@ -386,6 +386,11 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
   const meetsHardCriteria = allInterfacesMatched && throughputMet && haMet;
   const meetsAllPreferred = poeMet && wifiMet && cellularMet;
 
+  // --- End of Sale penalty (10% reduction) ---
+  if (appliance.endOfSale) {
+    totalScore = totalScore * 0.9;
+  }
+
   const percentageScore = maxPossibleScore > 0
     ? Math.round((totalScore / maxPossibleScore) * 100)
     : 0;

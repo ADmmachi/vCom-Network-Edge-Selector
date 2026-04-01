@@ -187,6 +187,15 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
           </Tooltip>
         );
       })()}
+      {appliance.endOfSale && (
+        <Text style={{
+          fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em",
+          backgroundColor: "#FFF3BF", color: "#E67700", display: "inline-block",
+          padding: "2px 8px", borderRadius: 99, marginBottom: 8,
+        }}>
+          ⚠️ EoS {appliance.endOfSale}
+        </Text>
+      )}
       <Box style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <Box>
           <Text fw={700} size="sm" c="dark">{appliance.model}</Text>

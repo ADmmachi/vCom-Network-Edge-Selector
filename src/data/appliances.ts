@@ -125,6 +125,7 @@ export interface Appliance {
   powerConsumptionWatts: number;
   formFactor: string;
   powerSupply: "Single" | "Dual";
+  endOfSale: string | null;
   notes: string;
 }
 
@@ -240,6 +241,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 10,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Entry-level model for SOHO/teleworker. 5 GE RJ45 ports (1 WAN, 4 LAN). USB port for 3G/4G modem failover. SP5 ASIC.",
   },
   {
@@ -267,6 +269,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 12,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Same as FortiGate 30G with integrated Wi-Fi 6 AP. Ideal for teleworker or micro-office without separate AP.",
   },
 
@@ -297,6 +300,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 12,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "5 GE RJ45 ports (1 WAN, 1 FortiLink, 3 LAN). USB port for 3G/4G modem. SOC4 ASIC. SSL VPN not supported on FortiOS 7.6+ (2GB RAM).",
   },
   {
@@ -325,6 +329,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 15,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Same as FortiGate 40F with integrated Wi-Fi (802.11ac W2). SSL VPN not supported on FortiOS 7.6+ (2GB RAM).",
   },
 
@@ -355,6 +360,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 12,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "5 GE RJ45 ports (1 WAN, 1 FortiLink, 3 LAN). SP5 ASIC. Variants: 50G-DSL (built-in DSL modem), 50G-5G (built-in 5G dual-SIM).",
   },
   {
@@ -383,6 +389,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 15,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Same as FortiGate 50G with integrated Wi-Fi 6 AP. DSL variant (FWF-50G-DSL) also available.",
   },
 
@@ -413,6 +420,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 12,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "5 GE RJ45 ports + 1 GE SFP port for fiber WAN. PoE variant (50G-SFP-PoE) available. SP5 ASIC.",
   },
 
@@ -443,6 +451,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 18,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Same as FortiGate 50G with integrated 5G Sub-6 GHz modem. Dual-SIM with automatic SIM failover. External 5G antennas (TS-9). SP5 ASIC. Ideal for wireless-primary or failover WAN.",
   },
 
@@ -473,6 +482,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 80,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Same as FortiGate 50G-SFP with PoE+ on 3 LAN ports (65W total budget). Powers APs/cameras directly. SP5 ASIC. Higher PSU wattage due to PoE.",
   },
 
@@ -504,6 +514,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 18,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "10 GE RJ45 ports (2 WAN, 1 DMZ, 5 LAN, 2 FortiLink). SOC4 ASIC. SSL VPN not supported on FortiOS 7.6+ (2GB RAM).",
   },
   {
@@ -533,6 +544,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 22,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Same as FortiGate 60F with integrated Wi-Fi (802.11ac W2). SSL VPN not supported on FortiOS 7.6+ (2GB RAM).",
   },
 
@@ -563,6 +575,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 20,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: "05/17/26",
     notes: "8 GE RJ45 ports + 2 SFP slots. 1.5M concurrent sessions. SOC4 ASIC. Higher session capacity than 60F. Supports 200 SSL VPN users.",
   },
 
@@ -593,6 +606,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 18,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "8 GE RJ45 ports + 2 SFP slots. SP5 ASIC. 1.5 Gbps NGFW throughput, 1.3 Gbps threat protection. Supports 200 SSL VPN users.",
   },
   {
@@ -621,6 +635,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 22,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Same as FortiGate 70G with integrated Wi-Fi 6 AP. SP5 ASIC.",
   },
 
@@ -651,6 +666,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 25,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "8 GE RJ45 ports + 2 shared SFP/RJ45 slots. SOC4 ASIC. 1.5M concurrent sessions. PoE variant (80F-PoE) available. Supports 200 SSL VPN users.",
   },
   {
@@ -679,6 +695,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 30,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Same as FortiGate 80F with integrated Wi-Fi (802.11ac W2). SOC4 ASIC.",
   },
 
@@ -709,6 +726,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 35,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "14 GE RJ45 ports + 2 SFP slots. SP5 ASIC. 3M concurrent sessions. 2.5 Gbps NGFW / 2.2 Gbps threat protection. Supports 200 SSL VPN users. 120GB SSD on 91G variant.",
   },
 
@@ -740,6 +758,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 45,
     formFactor: "1U Rack",
     powerSupply: "Dual",
+    endOfSale: "04/16/26",
     notes: "22 GE RJ45 ports + 2 shared SFP slots + 4 SFP+ 10GbE slots. SOC4/NP6XLite + CP9 ASIC. Dual power supplies (non-hot-swap). 480GB SSD on 101F variant. Supports 500 SSL VPN users.",
   },
 
@@ -770,6 +789,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 55,
     formFactor: "1U Rack",
     powerSupply: "Dual",
+    endOfSale: null,
     notes: "18 GE RJ45 ports + 4 10GE SFP+ slots. SP5/NP7Lite + CP10 ASIC. Next-gen replacement for 100F with significantly higher throughput. Supports 500 SSL VPN users.",
   },
 
@@ -801,6 +821,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 85,
     formFactor: "1U Rack",
     powerSupply: "Dual",
+    endOfSale: "03/01/26",
     notes: "18 GE RJ45 + 8 GE SFP + 4 10GE SFP+ slots. NP6XLite + CP9 ASIC. Dual AC power supplies. 480GB SSD on 201F variant. Supports 500 SSL VPN users.",
   },
 
@@ -832,6 +853,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 100,
     formFactor: "1U Rack",
     powerSupply: "Dual",
+    endOfSale: null,
     notes: "10 GE RJ45 + 8 5GE RJ45 + 4 GE SFP + 8 10GE SFP+ slots. NP7Lite + CP10 ASIC. Next-gen replacement for 200F. Supports 500 SSL VPN users.",
   },
 
@@ -862,6 +884,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 200,
     formFactor: "1U Rack",
     powerSupply: "Dual",
+    endOfSale: null,
     notes: "8 GE RJ45 + 8 GE SFP + 8 10GE SFP+ slots. NP7 + CP9 ASIC. Dual hot-swap PSUs. 480GB SSD on 401F. Supports 5,000 SSL VPN users. Enterprise/DC edge class.",
   },
 
@@ -895,6 +918,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 10,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "2 GE WAN + 10 GE LAN RJ45 ports. Warm spare HA supported. USB for 3G/4G dongle failover. Requires Meraki license. Dual WAN via convertible LAN port.",
   },
   {
@@ -922,6 +946,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 12,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Same as MX67 with integrated 802.11ac W2 AP supporting up to 4 SSIDs. External RP-SMA antennas. Ideal where separate AP deployment is impractical.",
   },
   {
@@ -949,6 +974,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 12,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Same as MX67 with integrated Cat 6 LTE modem. Removable external LTE paddle antennas. SIM card required (not included). Cellular can be active or failover uplink.",
   },
 
@@ -979,6 +1005,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 35,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "2 GE WAN + 10 GE LAN ports (2 PoE+ at 802.3at, 30W each). 100W PSU. Same firewall throughput as MX67 but adds PoE for peripherals.",
   },
   {
@@ -1007,6 +1034,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 40,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Same as MX68 with integrated 802.11ac W2 AP (up to 4 SSIDs). External RP-SMA antennas. 2 PoE+ LAN ports. 100W PSU.",
   },
   {
@@ -1035,6 +1063,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 45,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Highest-featured MX67/68 variant: Wi-Fi + LTE + PoE in one unit. Fixed antennas for Wi-Fi and LTE (non-removable). 100W PSU. SIM required.",
   },
 
@@ -1065,6 +1094,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 20,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "2 GE RJ45 WAN + 2 GE SFP WAN + 12 GE RJ45 LAN (2 PoE+ 802.3at). Warm spare HA. SFP WAN ports for fiber uplinks. Compact desktop form factor.",
   },
 
@@ -1095,6 +1125,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 30,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "2x 2.5G mGig RJ45 WAN (1 PoE 802.3at for MG cellular gateway) + 4 GE RJ45 LAN (1 PoE). Built-in eSIM for ZTP. Cisco 8000 series running MX OS. ~3x throughput vs MX67/68.",
   },
 
@@ -1125,6 +1156,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 55,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "2x 2.5G mGig RJ45 WAN (1 PoE 802.3at) + 10 GE RJ45 LAN (3 PoE UPoE 45W each). Built-in eSIM for ZTP. Cisco 8000 series running MX OS. Same throughput as C8111 with more ports.",
   },
 
@@ -1155,6 +1187,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 32,
     formFactor: "1U Rack",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "2 GE RJ45 WAN + 2 GE SFP WAN + 10 GE RJ45 LAN + 2 GE SFP LAN. WAN PoE+ (802.3at) for MG cellular gateway. Fanless/quiet. Warm spare HA.",
   },
 
@@ -1185,6 +1218,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 45,
     formFactor: "1U Rack",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "2x 2.5G mGig RJ45 WAN + 2 SFP+ WAN + 8 GE RJ45 LAN + 2 SFP+ LAN. PoE+ on GE port 4. WAN PoE+ for MG gateway. 100W PSU.",
   },
 
@@ -1215,6 +1249,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 55,
     formFactor: "1U Rack",
     powerSupply: "Dual",
+    endOfSale: null,
     notes: "Same port layout as MX95. Dual redundant 250W hot-swap PSUs + replaceable fans. PoE+ on GE port 4. WAN PoE+ for MG gateway. Higher user capacity.",
   },
 
@@ -1244,6 +1279,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 105,
     formFactor: "1U Rack",
     powerSupply: "Dual",
+    endOfSale: null,
     notes: "2 GE RJ45 WAN + 8 GE RJ45 LAN + 2 10GE SFP+ (WAN/LAN). Dual 250W hot-swap PSUs + replaceable fans. Campus or VPN concentrator class.",
   },
 
@@ -1273,6 +1309,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 190,
     formFactor: "1U Rack",
     powerSupply: "Dual",
+    endOfSale: null,
     notes: "2 GE RJ45 WAN + 8 GE RJ45 LAN + 2 10GE SFP+ (WAN/LAN). Dual 250W hot-swap PSUs + replaceable fans. 10 Gbps stateful firewall, 6.5 Gbps VPN. Enterprise/DC class.",
   },
 
@@ -1302,6 +1339,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 200,
     formFactor: "1U Rack",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "8 GE RJ45 + 2 10GE SFP+ + 2 25GE SFP28 WAN. Up to 20 Gbps firewall, 8 Gbps threat protection. Cisco 8000 series running MX OS. New secure networking ASIC. Foundation for SASE.",
   },
   // ──────────────────────────────────────────────
@@ -1334,6 +1372,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 20,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "4 GE RJ45 LAN/WAN + 1 GE SFP. Integrated Wi-Fi 6 (802.11ax). 4 GB RAM / 16 GB flash. Licensed up to 500M bandwidth tier. Fanless desktop/wall/rack mount. Requires SD-WAN release 5.2.2+.",
   },
 
@@ -1364,6 +1403,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 25,
     formFactor: "Desktop",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "Same as 710-W + integrated 5G/LTE modem with dual physical SIM support and SIM failover. Wi-Fi 6. 4 GB RAM / 16 GB flash. Ideal for mobile retail, pop-up sites, or wireless-primary WAN. Requires SD-WAN release 5.2.4+.",
   },
 
@@ -1392,6 +1432,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 45,
     formFactor: "1U Rack",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "6x 2.5G RJ45 LAN/WAN + 2x 10GE SFP+. 8 GB RAM / 16 GB flash / 64 GB SSD. Licensed up to 10G bandwidth tier. Intel Atom class. Secure Boot + TPM 2.0. Requires SD-WAN release 5.2.4+.",
   },
 
@@ -1420,6 +1461,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 60,
     formFactor: "1U Rack",
     powerSupply: "Single",
+    endOfSale: null,
     notes: "6x 2.5G RJ45 LAN/WAN + 2x 10GE SFP+. 16 GB RAM / 16 GB flash / 64 GB SSD. Licensed from 100M–10G bandwidth tier. Higher tunnel and session scale vs 720. Secure Boot + TPM 2.0. Requires SD-WAN release 5.2.4+.",
   },
 
@@ -1448,6 +1490,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 200,
     formFactor: "1U Rack",
     powerSupply: "Dual",
+    endOfSale: null,
     notes: "10x 1G RJ45 + 8x 10GE SFP+. Dual hot-swap PSUs. Up to 12,000 tunnels. 300% improvement over Edge 3000 series. Supports clustering beyond 100 Gbps. Replaces 3400/3800 series.",
   },
 
@@ -1478,6 +1521,7 @@ export const appliances: Appliance[] = [
     powerConsumptionWatts: 350,
     formFactor: "1U Rack",
     powerSupply: "Dual",
+    endOfSale: null,
     notes: "2x 1G RJ45 + 8x 10GE SFP+ + 4x 25GE SFP28 + 2x 40GE QSFP. Dual hot-swap PSUs. Up to 20,000 tunnels. Supports clustering beyond 100 Gbps. Enterprise DC / hub class. AI-ready edge platform.",
   },
 

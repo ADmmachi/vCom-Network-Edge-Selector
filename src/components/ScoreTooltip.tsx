@@ -82,6 +82,11 @@ export default function ScoreTooltip({ result, featureMap, children }: ScoreTool
               </Box>
             </Box>
           )}
+          {result.appliance.endOfSale && (
+            <Box mt={8} pt={6} style={{ borderTop: "1px solid #373A40" }}>
+              <Text fw={600} style={{ color: "#fcc419", fontSize: "0.6rem" }}>⚠️ End of Sale (-10%)</Text>
+            </Box>
+          )}
           <Box style={{ position: "absolute", width: 8, height: 8, backgroundColor: "#1a1b1e", transform: "rotate(45deg)", right: 16, ...(position === "bottom" ? { top: -4 } : { bottom: -4 }) }} />
         </Box>
       )}
