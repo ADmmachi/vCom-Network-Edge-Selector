@@ -78,6 +78,12 @@ function interfaceCanServeHandoff(applianceInterfaceType: string, requiredType: 
     if (applianceInterfaceType.includes("mGig") || applianceInterfaceType.includes("RJ45")) return true;
   }
 
+  // 2.5G mGig RJ45 can be served by mGig interfaces (direct match) or SFP+ and higher (via multi-rate transceiver)
+  if (requiredType === "2.5G mGig RJ45") {
+    if (applianceInterfaceType.includes("mGig")) return true;
+    if (applianceInterfaceType === "10GE SFP+" || applianceInterfaceType === "25GE SFP28" || applianceInterfaceType === "40GE QSFP") return true;
+  }
+
   if (requiredType === "GE SFP" && applianceInterfaceType === "10GE SFP+") return true;
 
   if (requiredType === "10GE SFP+") {

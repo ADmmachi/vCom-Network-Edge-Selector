@@ -142,6 +142,7 @@ export const handoffTypes: HandoffType[] = [
   { id: "copper_rj45", name: "1GbE Copper (RJ45)", interfaceType: "GE RJ45" },
   { id: "fiber_smf_lc", name: "1GbE Single-Mode (SMF/LC)", interfaceType: "GE SFP" },
   { id: "fiber_mmf_lc", name: "1GbE Multi-Mode (MMF/LC)", interfaceType: "GE SFP" },
+  { id: "mgig_2_5g", name: "2.5GbE mGig Copper (RJ45)", interfaceType: "2.5G mGig RJ45" },
   { id: "fiber_10g_smf", name: "10GbE Single-Mode (SMF/LC)", interfaceType: "10GE SFP+" },
   { id: "fiber_10g_mmf", name: "10GbE Multi-Mode (MMF/LC)", interfaceType: "10GE SFP+" },
 ];
@@ -181,12 +182,14 @@ export function getHandoffOptionsForCircuitType(circuitTypeId: string): HandoffT
       );
     case "broadband_fiber":
       return handoffTypes.filter(handoff =>
-        ["copper_rj45", "fiber_smf_lc", "fiber_mmf_lc"].includes(handoff.id)
+        ["copper_rj45", "mgig_2_5g", "fiber_smf_lc", "fiber_mmf_lc"].includes(handoff.id)
       );
     case "broadband_cable":
     case "fixed_wireless":
     case "starlink":
-      return handoffTypes.filter(handoff => handoff.id === "copper_rj45");
+      return handoffTypes.filter(handoff =>
+        ["copper_rj45", "mgig_2_5g"].includes(handoff.id)
+      );
     case "other":
       return handoffTypes;
     default:
