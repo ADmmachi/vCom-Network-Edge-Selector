@@ -63,6 +63,11 @@ export default function ScoreTooltip({ result, featureMap, children }: ScoreTool
                 <Text fw={600} style={{ color: "#909296", fontSize: "0.6rem" }}>Throughput</Text>
                 <Text fw={700} style={{ color: throughput.meetsRequirement ? "#51cf66" : "#ff6b6b", fontSize: "0.6rem" }}>{Math.round(throughput.score)}/{throughput.max}</Text>
               </Box>
+              {(throughput.oversizePenaltyPercent ?? 0) > 0 && (
+                <Text fw={600} style={{ color: "#fcc419", fontSize: "0.55rem", marginBottom: 2 }}>
+                  ⚠️ Oversized {(throughput.applianceThroughput / throughput.totalRequired).toFixed(1)}x (-{throughput.oversizePenaltyPercent}%)
+                </Text>
+              )}
               <Text style={{ color: "#909296", fontSize: "0.6rem" }}>
                 {formatMbps(throughput.applianceThroughput)} device / {formatMbps(throughput.totalRequired)} needed
                 {throughput.meetsRequirement ? <Text span style={{ color: "#51cf66" }}> ✓</Text> : <Text span style={{ color: "#ff6b6b" }}> ✗</Text>}
@@ -82,13 +87,8 @@ export default function ScoreTooltip({ result, featureMap, children }: ScoreTool
               </Box>
             </Box>
           )}
-          {(throughput?.oversizePenaltyPercent ?? 0) > 0 && (
-            <Box mt={8} pt={6} style={{ borderTop: "1px solid #373A40" }}>
-              <Text fw={600} style={{ color: "#909296", fontSize: "0.55rem" }}>⚠ Oversized ({(throughput!.applianceThroughput / throughput!.totalRequired).toFixed(1)}× required) — throughput score reduced by {throughput!.oversizePenaltyPercent}%</Text>
-            </Box>
-          )}
           {result.appliance.endOfSale && (
-            <Box mt={8} pt={6} style={{ borderTop: (throughput?.oversizePenaltyPercent ?? 0) > 0 ? "none" : "1px solid #373A40" }}>
+            <Box mt={8} pt={6} style={{ borderTop: "1px solid #373A40" }}>
               <Text fw={600} style={{ color: "#fcc419", fontSize: "0.6rem" }}>⚠️ End of Sale (-10%)</Text>
             </Box>
           )}
