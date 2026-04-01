@@ -52,7 +52,17 @@ export default function ScoreTooltip({ result, featureMap, children }: ScoreTool
                 <Text fw={700} style={{ color: interfaces.allMatched ? "#51cf66" : "#fcc419", fontSize: "0.6rem" }}>{Math.round(interfaces.score)}/{interfaces.max}</Text>
               </Box>
               <Text style={{ color: "#909296", fontSize: "0.6rem" }}>
-                {interfaces.matches.filter(m => m.isMatched).length}/{interfaces.matches.length} ports matched
+                {(() => {
+                  const wanMatched = interfaces.matches.filter(m => m.isMatched).length;
+                  const wanTotal = interfaces.matches.length;
+                  // HA requires a physical port for non-Meraki vendors
+                  const haRequiresPort = result.haNote !== null && result.appliance.vendor !== "Cisco Meraki";
+                  const haPortMatched = haRequiresPort && result.haInterfaceMapping !== null;
+                  if (haRequiresPort) {
+                    return `${wanMatched + (haPortMatched ? 1 : 0)}/${wanTotal + 1} ports matched (incl. HA)`;
+                  }
+                  return `${wanMatched}/${wanTotal} ports matched`;
+                })()}
                 {interfaces.allMatched ? <Text span style={{ color: "#51cf66" }}> ✓</Text> : <Text span style={{ color: "#fcc419" }}> partial</Text>}
               </Text>
             </Box>

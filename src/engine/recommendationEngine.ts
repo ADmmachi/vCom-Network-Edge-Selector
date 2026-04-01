@@ -209,13 +209,65 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
     }
 
     const matchedCount = matches.filter(match => match.isMatched).length;
-    let interfaceScore = (matchedCount / criteria.circuits.length) * WEIGHTS.interfaceMatch;
+
+    // HA interface integration: if HA requires a physical interface, count it as an additional required interface
+    let haInterfaceMatched = false;
+    let haRequiresPhysicalPort = false;
+    if (criteria.requireHA) {
+      const isMerakiHA = appliance.vendor === "Cisco Meraki";
+      haRequiresPhysicalPort = !isMerakiHA; // Meraki uses cloud-managed warm spare — no physical port needed
+
+      if (haRequiresPhysicalPort) {
+        // Check dedicated HA ports first
+        const haInterfaces = appliance.interfaces.filter(
+          iface => iface.purpose.toLowerCase() === "ha"
+        );
+        const haPortCount = haInterfaces.reduce((total, iface) => total + iface.quantity, 0);
+
+        if (haPortCount > 0) {
+          haInterfaceMatched = true;
+        } else {
+          // Check remaining LAN, LAN/WAN, or FortiLink ports (after WAN allocation)
+          const remainingLan = appliance.interfaces
+            .filter(iface => {
+              const p = iface.purpose.toLowerCase();
+              return p.includes("lan") && !p.includes("wan");
+            })
+            .reduce((t, i) => t + i.quantity, 0);
+
+          const dualPorts = appliance.interfaces
+            .filter(iface => {
+              const p = iface.purpose.toLowerCase();
+              return p.includes("lan") && p.includes("wan");
+            })
+            .reduce((t, i) => t + i.quantity, 0);
+          const usedWanPorts = matches.filter(m => m.isMatched).length;
+          const availableDual = Math.max(0, dualPorts - usedWanPorts);
+
+          const flPorts = appliance.interfaces
+            .filter(iface => iface.purpose.toLowerCase() === "fortilink")
+            .reduce((t, i) => t + i.quantity, 0);
+          const availableFL = Math.max(0, flPorts - fortiLinkUsedAsWan);
+
+          if (remainingLan >= 1 || availableDual >= 1 || availableFL >= 1) {
+            haInterfaceMatched = true;
+          }
+        }
+      }
+    }
+
+    // Calculate interface score with HA counted as an additional required interface
+    const totalRequiredInterfaces = criteria.circuits.length + (haRequiresPhysicalPort ? 1 : 0);
+    const totalMatchedInterfaces = matchedCount + (haRequiresPhysicalPort && haInterfaceMatched ? 1 : 0);
+    let interfaceScore = (totalMatchedInterfaces / totalRequiredInterfaces) * WEIGHTS.interfaceMatch;
 
     // Small penalty when FortiLink ports are used as WAN (2% per FortiLink port used)
     if (fortiLinkUsedAsWan > 0) {
       const fortiLinkPenalty = 1.0 - (fortiLinkUsedAsWan * 0.02);
       interfaceScore *= Math.max(fortiLinkPenalty, 0.9); // Floor at 90% of interface score
     }
+
+    allInterfacesMatched = allInterfacesMatched && (!haRequiresPhysicalPort || haInterfaceMatched);
 
     totalScore += interfaceScore;
     maxPossibleScore += WEIGHTS.interfaceMatch;
@@ -225,6 +277,34 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
       max: WEIGHTS.interfaceMatch,
       matches,
       allMatched: allInterfacesMatched,
+    };
+  } else if (criteria.requireHA && appliance.vendor !== "Cisco Meraki") {
+    // No circuits defined, but HA requires a physical interface — score HA port availability alone
+    const haInterfaces = appliance.interfaces.filter(iface => iface.purpose.toLowerCase() === "ha");
+    const haPortCount = haInterfaces.reduce((total, iface) => total + iface.quantity, 0);
+    let haOnlyMatched = false;
+
+    if (haPortCount > 0) {
+      haOnlyMatched = true;
+    } else {
+      const lanPorts = appliance.interfaces
+        .filter(iface => { const p = iface.purpose.toLowerCase(); return p.includes("lan"); })
+        .reduce((t, i) => t + i.quantity, 0);
+      const flPorts = appliance.interfaces
+        .filter(iface => iface.purpose.toLowerCase() === "fortilink")
+        .reduce((t, i) => t + i.quantity, 0);
+      if (lanPorts >= 1 || flPorts >= 1) haOnlyMatched = true;
+    }
+
+    const interfaceScore = haOnlyMatched ? WEIGHTS.interfaceMatch : 0;
+    allInterfacesMatched = haOnlyMatched;
+    totalScore += interfaceScore;
+    maxPossibleScore += WEIGHTS.interfaceMatch;
+    matchDetails.interfaces = {
+      score: interfaceScore,
+      max: WEIGHTS.interfaceMatch,
+      matches: [],
+      allMatched: haOnlyMatched,
     };
   }
 
@@ -286,76 +366,59 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
     };
   }
 
-  // --- HARD: HA peering ---
+  // --- HA peering (note & interface mapping — scoring is integrated into interface matching above) ---
   let haNote: string | null = null;
-  let haMet = true;
   let haInterfaceMapping: { type: string; purpose: string } | null = null;
 
   if (criteria.requireHA) {
-    const haInterfaces = appliance.interfaces.filter(
-      iface => iface.purpose.toLowerCase() === "ha"
-    );
-    const haPortCount = haInterfaces.reduce((total, iface) => total + iface.quantity, 0);
+    const isMeraki = appliance.vendor === "Cisco Meraki";
+    const isVeloCloud = appliance.vendor === "VeloCloud";
 
-    if (haPortCount > 0) {
-      haNote = "Order 2 units";
-      haInterfaceMapping = { type: haInterfaces[0].type, purpose: "HA" };
+    if (isMeraki) {
+      // Meraki uses cloud-managed warm spare — no physical port needed
+      haNote = "Order 2 units · Cloud-managed warm spare";
+      haInterfaceMapping = { type: "Cloud-Managed", purpose: "HA (Warm Spare)" };
     } else {
-      // Count pure LAN ports
-      const pureLanInterfaces = appliance.interfaces
-        .filter(iface => {
-          const purposeLower = iface.purpose.toLowerCase();
-          return purposeLower.includes("lan") && !purposeLower.includes("wan");
-        });
-      const pureLanPorts = pureLanInterfaces.reduce((total, iface) => total + iface.quantity, 0);
+      // Fortinet, VeloCloud, and others need a physical interface for HA
+      const haInterfaces = appliance.interfaces.filter(
+        iface => iface.purpose.toLowerCase() === "ha"
+      );
+      const haPortCount = haInterfaces.reduce((total, iface) => total + iface.quantity, 0);
 
-      // Count dual-purpose LAN/WAN ports (e.g., VeloCloud)
-      const dualPurposeInterfaces = appliance.interfaces
-        .filter(iface => {
-          const purposeLower = iface.purpose.toLowerCase();
-          return purposeLower.includes("lan") && purposeLower.includes("wan");
-        });
-      const dualPurposePorts = dualPurposeInterfaces.reduce((total, iface) => total + iface.quantity, 0);
-
-      // Count FortiLink ports (can serve as LAN, including for HA peering)
-      const fortiLinkInterfaces = appliance.interfaces
-        .filter(iface => iface.purpose.toLowerCase() === "fortilink");
-      const fortiLinkPorts = fortiLinkInterfaces.reduce((total, iface) => total + iface.quantity, 0);
-
-      // FortiLink ports already used as WAN are not available for HA
-      const availableFortiLinkPorts = Math.max(0, fortiLinkPorts - fortiLinkUsedAsWan);
-
-      // Count how many WAN ports are consumed by circuit assignments
-      const usedWanPorts = matchDetails.interfaces?.matches.filter((m: InterfaceMatch) => m.isMatched).length ?? 0;
-
-      // For dual-purpose ports, available = total dual ports minus those used for WAN
-      const availableDualPorts = Math.max(0, dualPurposePorts - usedWanPorts);
-
-      const totalAvailableLanPorts = pureLanPorts + availableDualPorts + availableFortiLinkPorts;
-
-      const isMeraki = appliance.vendor === "Cisco Meraki";
-      const isVeloCloud = appliance.vendor === "VeloCloud";
-
-      if (isMeraki) {
-        haNote = "Order 2 units · Cloud-managed warm spare";
-        haInterfaceMapping = { type: "Cloud-Managed", purpose: "HA (Warm Spare)" };
-      } else if (isVeloCloud && totalAvailableLanPorts >= 1) {
-        const haIface = dualPurposeInterfaces[0] || pureLanInterfaces[0];
+      if (haPortCount > 0) {
         haNote = "Order 2 units";
-        haInterfaceMapping = haIface ? { type: haIface.type, purpose: "HA Heartbeat" } : null;
-      } else if (pureLanPorts >= 1) {
-        haNote = "Order 2 units";
-        haInterfaceMapping = pureLanInterfaces[0] ? { type: pureLanInterfaces[0].type, purpose: "HA Peering" } : null;
-      } else if (availableDualPorts >= 1) {
-        haNote = "Order 2 units";
-        haInterfaceMapping = dualPurposeInterfaces[0] ? { type: dualPurposeInterfaces[0].type, purpose: "HA Peering" } : null;
-      } else if (availableFortiLinkPorts >= 1) {
-        haNote = "Order 2 units";
-        haInterfaceMapping = fortiLinkInterfaces[0] ? { type: fortiLinkInterfaces[0].type, purpose: "HA Peering" } : null;
+        haInterfaceMapping = { type: haInterfaces[0].type, purpose: "HA" };
       } else {
-        haMet = false;
-        haNote = "Order 2 units · No available HA port";
-        failureReasons.push("No available interface for HA peering");
+        // Find which port type is available for HA peering
+        const pureLanInterfaces = appliance.interfaces
+          .filter(iface => { const p = iface.purpose.toLowerCase(); return p.includes("lan") && !p.includes("wan"); });
+        const dualPurposeInterfaces = appliance.interfaces
+          .filter(iface => { const p = iface.purpose.toLowerCase(); return p.includes("lan") && p.includes("wan"); });
+        const fortiLinkInterfaces = appliance.interfaces
+          .filter(iface => iface.purpose.toLowerCase() === "fortilink");
+
+        const usedWanPorts = matchDetails.interfaces?.matches.filter((m: InterfaceMatch) => m.isMatched).length ?? 0;
+        const availableDual = Math.max(0, dualPurposeInterfaces.reduce((t, i) => t + i.quantity, 0) - usedWanPorts);
+        const availableFL = Math.max(0, fortiLinkInterfaces.reduce((t, i) => t + i.quantity, 0) - fortiLinkUsedAsWan);
+        const pureLanPorts = pureLanInterfaces.reduce((t, i) => t + i.quantity, 0);
+
+        if (isVeloCloud && (availableDual >= 1 || pureLanPorts >= 1)) {
+          const haIface = dualPurposeInterfaces[0] || pureLanInterfaces[0];
+          haNote = "Order 2 units";
+          haInterfaceMapping = haIface ? { type: haIface.type, purpose: "HA Heartbeat" } : null;
+        } else if (pureLanPorts >= 1) {
+          haNote = "Order 2 units";
+          haInterfaceMapping = { type: pureLanInterfaces[0].type, purpose: "HA Peering" };
+        } else if (availableDual >= 1) {
+          haNote = "Order 2 units";
+          haInterfaceMapping = { type: dualPurposeInterfaces[0].type, purpose: "HA Peering" };
+        } else if (availableFL >= 1) {
+          haNote = "Order 2 units";
+          haInterfaceMapping = { type: fortiLinkInterfaces[0].type, purpose: "HA Peering" };
+        } else {
+          haNote = "Order 2 units · No available HA port";
+          failureReasons.push("No available interface for HA peering");
+        }
       }
     }
   }
@@ -416,7 +479,7 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
     };
   }
 
-  const meetsHardCriteria = allInterfacesMatched && throughputMet && haMet;
+  const meetsHardCriteria = allInterfacesMatched && throughputMet;
   const meetsAllPreferred = poeMet && wifiMet && cellularMet;
 
   // --- End of Sale penalty (10% reduction) ---
