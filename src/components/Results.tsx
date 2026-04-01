@@ -213,21 +213,6 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
                 </Box>
               );
             })}
-            {result.haInterfaceMapping && (() => {
-              const haColors = getInterfacePurposeColors(result.haInterfaceMapping!.type, true);
-              return (
-                <Box style={{
-                  display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
-                  backgroundColor: haColors.bg,
-                }}>
-                  <IconCheck size={10} color={haColors.text} style={{ flexShrink: 0 }} />
-                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>HA Peering</Text>
-                  <Text span c="dimmed">·</Text>
-                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>Order 2 units</Text>
-                  <Text span ml="auto" style={{ fontSize: "0.6rem", color: haColors.text, flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
-                </Box>
-              );
-            })()}
             {result.cellularInterfaceMapping && (() => {
               const cellColors = { bg: "rgba(238,124,19,0.08)", text: "#EE7C13" };
               return (
@@ -243,11 +228,26 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
                 </Box>
               );
             })()}
+            {result.haInterfaceMapping && (() => {
+              const haColors = getInterfacePurposeColors(result.haInterfaceMapping!.type, true);
+              return (
+                <Box style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
+                  backgroundColor: haColors.bg,
+                }}>
+                  <IconCheck size={10} color={haColors.text} style={{ flexShrink: 0 }} />
+                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>HA Peering</Text>
+                  <Text span c="dimmed">·</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>Order 2 units</Text>
+                  <Text span ml="auto" style={{ fontSize: "0.6rem", color: haColors.text, flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
+                </Box>
+              );
+            })()}
           </Box>
         </Box>
       )}
-      {result.haNote && !result.haInterfaceMapping && <NoteBox emoji="🔁" text={result.haNote} color="#014C71" />}
       {result.cellularNote && !result.cellularInterfaceMapping && <NoteBox emoji="📱" text={result.cellularNote} color="#EE7C13" />}
+      {result.haNote && !result.haInterfaceMapping && <NoteBox emoji="🔁" text={result.haNote} color="#014C71" />}
       {result.wifiNote && <NoteBox emoji="📶" text={result.wifiNote} color="#EE7C13" />}
       {result.poeNote && <NoteBox emoji="🔋" text={result.poeNote} color="#EE7C13" />}
     </Paper>
@@ -385,21 +385,6 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
                 </Box>
               );
             })}
-            {result.haInterfaceMapping && (() => {
-              const haColors = getInterfacePurposeColors(result.haInterfaceMapping!.type, true);
-              return (
-                <Box style={{
-                  display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
-                  backgroundColor: haColors.bg,
-                }}>
-                  <IconCheck size={10} color={haColors.text} style={{ flexShrink: 0 }} />
-                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>HA Peering</Text>
-                  <Text span c="dimmed">·</Text>
-                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>Order 2 units</Text>
-                  <Text span ml="auto" style={{ fontSize: "0.6rem", color: haColors.text, flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
-                </Box>
-              );
-            })()}
             {result.cellularInterfaceMapping && (() => {
               const cellColors = { bg: "rgba(238,124,19,0.08)", text: "#EE7C13" };
               return (
@@ -412,6 +397,21 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
                   <Text span c="dimmed">·</Text>
                   <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>{result.cellularInterfaceMapping.type.includes("Built-in") ? "Built-in modem" : "External gateway"}</Text>
                   <Text span ml="auto" style={{ fontSize: "0.6rem", color: cellColors.text, flexShrink: 0 }}>→ {result.cellularInterfaceMapping.type}</Text>
+                </Box>
+              );
+            })()}
+            {result.haInterfaceMapping && (() => {
+              const haColors = getInterfacePurposeColors(result.haInterfaceMapping!.type, true);
+              return (
+                <Box style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 4, fontSize: "0.65rem",
+                  backgroundColor: haColors.bg,
+                }}>
+                  <IconCheck size={10} color={haColors.text} style={{ flexShrink: 0 }} />
+                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>HA Peering</Text>
+                  <Text span c="dimmed">·</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>Order 2 units</Text>
+                  <Text span ml="auto" style={{ fontSize: "0.6rem", color: haColors.text, flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
                 </Box>
               );
             })()}
