@@ -82,8 +82,13 @@ export default function ScoreTooltip({ result, featureMap, children }: ScoreTool
               </Box>
             </Box>
           )}
-          {result.appliance.endOfSale && (
+          {(throughput?.oversizePenaltyPercent ?? 0) > 0 && (
             <Box mt={8} pt={6} style={{ borderTop: "1px solid #373A40" }}>
+              <Text fw={600} style={{ color: "#909296", fontSize: "0.55rem" }}>⚠ Oversized ({(throughput!.applianceThroughput / throughput!.totalRequired).toFixed(1)}× required) — throughput score reduced by {throughput!.oversizePenaltyPercent}%</Text>
+            </Box>
+          )}
+          {result.appliance.endOfSale && (
+            <Box mt={8} pt={6} style={{ borderTop: (throughput?.oversizePenaltyPercent ?? 0) > 0 ? "none" : "1px solid #373A40" }}>
               <Text fw={600} style={{ color: "#fcc419", fontSize: "0.6rem" }}>⚠️ End of Sale (-10%)</Text>
             </Box>
           )}

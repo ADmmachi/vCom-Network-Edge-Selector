@@ -23,7 +23,7 @@ export interface InterfaceMatch {
 
 export interface MatchDetails {
   interfaces?: { score: number; max: number; matches: InterfaceMatch[]; allMatched: boolean };
-  throughput?: { score: number; max: number; totalRequired: number; applianceThroughput: number; meetsRequirement: boolean };
+  throughput?: { score: number; max: number; totalRequired: number; applianceThroughput: number; meetsRequirement: boolean; oversizePenaltyPercent: number };
   features?: { score: number; max: number; matched: string[]; missing: string[] };
 }
 
@@ -223,11 +223,13 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
 
   if (totalRequiredBandwidth > 0) {
     let throughputScore = 0;
+    let oversizePenaltyPercent = 0;
     if (appliance.ngfwThroughputMbps >= totalRequiredBandwidth) {
       throughputScore = WEIGHTS.throughput;
       const overProvisionRatio = appliance.ngfwThroughputMbps / totalRequiredBandwidth;
 
       // Graduated oversize penalty — starts beyond Growth Pick max range (3×)
+      // Applies to ALL vendors equally
       if (overProvisionRatio > GROWTH_THROUGHPUT_MAX_RATIO) {
         let penalty: number;
         if (overProvisionRatio <= 5) {
@@ -238,11 +240,20 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
           // 5–10×: linear taper from 70% → 40%
           const t = (overProvisionRatio - 5) / 5;
           penalty = 0.7 - (0.3 * t);
+        } else if (overProvisionRatio <= 25) {
+          // 10–25×: linear taper from 40% → 20%
+          const t = (overProvisionRatio - 10) / 15;
+          penalty = 0.4 - (0.2 * t);
+        } else if (overProvisionRatio <= 50) {
+          // 25–50×: linear taper from 20% → 10%
+          const t = (overProvisionRatio - 25) / 25;
+          penalty = 0.2 - (0.1 * t);
         } else {
-          // >10×: floor at 40%
-          penalty = 0.4;
+          // >50×: floor at 10%
+          penalty = 0.1;
         }
         throughputScore *= penalty;
+        oversizePenaltyPercent = Math.round((1 - penalty) * 100);
       }
     } else {
       throughputMet = false;
@@ -258,6 +269,7 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
       totalRequired: totalRequiredBandwidth,
       applianceThroughput: appliance.ngfwThroughputMbps,
       meetsRequirement: throughputMet,
+      oversizePenaltyPercent,
     };
   }
 
@@ -510,6 +522,13 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
       bestFit = fortinetTieBreaker(tiedForTop);
     } else if (vendor === "Cisco Meraki") {
       bestFit = merakiTieBreaker(tiedForTop);
+    } else if (vendor === "VeloCloud") {
+      // VeloCloud tie-breaker: prefer lowest model number (Edge 710 < Edge 720 < Edge 740 etc.)
+      bestFit = tiedForTop.sort((a, b) => {
+        const numA = parseInt(a.appliance.model.match(/\d+/)?.[0] || "9999", 10);
+        const numB = parseInt(b.appliance.model.match(/\d+/)?.[0] || "9999", 10);
+        return numA - numB;
+      })[0];
     } else {
       bestFit = tiedForTop[0];
     }
