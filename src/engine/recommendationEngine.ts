@@ -489,7 +489,7 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
         return p.includes("wan") && (iface.type === "GE RJ45" || iface.type.includes("mGig") || iface.type.includes("RJ45"));
       });
       if (availableWanRJ45) {
-        cellularInterfaceMapping = { type: `${availableWanRJ45.type} (External Gateway)`, purpose: "Cellular" };
+        cellularInterfaceMapping = { type: availableWanRJ45.type, purpose: "Cellular" };
       } else {
         cellularInterfaceMapping = null;
       }

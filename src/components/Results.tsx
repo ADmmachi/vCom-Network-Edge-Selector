@@ -222,8 +222,6 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
                 }}>
                   <IconCheck size={10} color={cellColors.text} style={{ flexShrink: 0 }} />
                   <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>Cellular</Text>
-                  <Text span c="dimmed">·</Text>
-                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>{result.cellularInterfaceMapping.type.includes("Built-in") ? "Built-in modem" : "External gateway"}</Text>
                   <Text span ml="auto" style={{ fontSize: "0.6rem", color: cellColors.text, flexShrink: 0 }}>→ {result.cellularInterfaceMapping.type}</Text>
                 </Box>
               );
@@ -394,8 +392,6 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
                 }}>
                   <IconCheck size={10} color={cellColors.text} style={{ flexShrink: 0 }} />
                   <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>Cellular</Text>
-                  <Text span c="dimmed">·</Text>
-                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>{result.cellularInterfaceMapping.type.includes("Built-in") ? "Built-in modem" : "External gateway"}</Text>
                   <Text span ml="auto" style={{ fontSize: "0.6rem", color: cellColors.text, flexShrink: 0 }}>→ {result.cellularInterfaceMapping.type}</Text>
                 </Box>
               );
