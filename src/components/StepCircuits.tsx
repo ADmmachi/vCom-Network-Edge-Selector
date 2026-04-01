@@ -392,8 +392,8 @@ export default function StepCircuits({ circuitTypes, circuits, onCircuitsChange 
                       styles={{
                         input: {
                           backgroundColor: "#fff",
-                          borderColor: "#dee2e6",
-                          color: circuit.handoffId === "" ? "#adb5bd" : "#212529",
+                          borderColor: isOther && circuit.handoffId === "" ? "#e03131" : "#dee2e6",
+                          color: isOther && circuit.handoffId === "" ? "#e03131" : circuit.handoffId === "" ? "#adb5bd" : "#212529",
                         },
                       }}
                     />

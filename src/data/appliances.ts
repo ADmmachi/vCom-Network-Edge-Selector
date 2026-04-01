@@ -71,6 +71,17 @@ export function getDownloadOptions(circuitTypeId: string): BandwidthOption[] {
       { label: "10 Gbps", valueMbps: 10000 },
     ];
   }
+  if (circuitTypeId === "fixed_wireless" || circuitTypeId === "starlink") {
+    return [
+      { label: "25 Mbps", valueMbps: 25 },
+      { label: "50 Mbps", valueMbps: 50 },
+      { label: "100 Mbps", valueMbps: 100 },
+      { label: "200 Mbps", valueMbps: 200 },
+      { label: "300 Mbps", valueMbps: 300 },
+      { label: "500 Mbps", valueMbps: 500 },
+      { label: "1 Gbps", valueMbps: 1000 },
+    ];
+  }
   return STANDARD_DOWNLOAD_OPTIONS;
 }
 
@@ -179,10 +190,11 @@ export function getDefaultHandoff(circuitTypeId: string, bandwidthMbps: number):
       if (bandwidthMbps > 1000) return "fiber_10g_smf";
       if (bandwidthMbps >= 100) return "fiber_smf_lc";
       return "copper_rj45";
-    case "broadband_fiber":
-    case "broadband_cable":
     case "fixed_wireless":
     case "starlink":
+      return "copper_rj45";
+    case "broadband_fiber":
+    case "broadband_cable":
     case "other":
       if (bandwidthMbps > 1000) return "mgig_2_5g";
       return "copper_rj45";
@@ -205,10 +217,13 @@ export function getHandoffOptionsForCircuitType(circuitTypeId: string): HandoffT
         ["copper_rj45", "mgig_2_5g", "fiber_smf_lc", "fiber_mmf_lc"].includes(handoff.id)
       );
     case "broadband_cable":
+      return handoffTypes.filter(handoff =>
+        ["copper_rj45", "mgig_2_5g"].includes(handoff.id)
+      );
     case "fixed_wireless":
     case "starlink":
       return handoffTypes.filter(handoff =>
-        ["copper_rj45", "mgig_2_5g"].includes(handoff.id)
+        ["copper_rj45"].includes(handoff.id)
       );
     case "other":
       return handoffTypes;
