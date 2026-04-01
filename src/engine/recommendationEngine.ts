@@ -426,7 +426,7 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
   for (const [vendor, vendorAppliances] of vendorMap) {
     const hardMatches = vendorAppliances
       .filter(scored => scored.meetsHardCriteria)
-      .sort((resultA, resultB) => resultA.appliance.ngfwThroughputMbps - resultB.appliance.ngfwThroughputMbps);
+      .sort((resultA, resultB) => resultB.totalScore - resultA.totalScore);
 
     const nonMatching = vendorAppliances
       .filter(scored => !scored.meetsHardCriteria)
@@ -445,10 +445,35 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
       continue;
     }
 
-    // Best-fit: lowest model meeting hard requirements
-    const bestFit = hardMatches[0];
+    // --- Fortinet tie-breaker: prefer lowest-numbered G model, then lowest-numbered non-G ---
+    const fortinetTieBreaker = (candidates: ScoredAppliance[]): ScoredAppliance => {
+      if (candidates.length === 1) return candidates[0];
 
-    // Full-match: lowest model meeting hard + all preferred
+      const parseModel = (model: string): { number: number; isG: boolean } => {
+        const match = model.match(/(\d+)(G|F)?/i);
+        const num = match ? parseInt(match[1], 10) : 9999;
+        const isG = match ? (match[2] || "").toUpperCase() === "G" : false;
+        return { number: num, isG };
+      };
+
+      return candidates.sort((a, b) => {
+        const modelA = parseModel(a.appliance.model);
+        const modelB = parseModel(b.appliance.model);
+        // Prefer G models over non-G
+        if (modelA.isG !== modelB.isG) return modelA.isG ? -1 : 1;
+        // Then lowest model number
+        return modelA.number - modelB.number;
+      })[0];
+    };
+
+    // Best-fit: highest scoring model meeting hard requirements (with Fortinet tie-breaker)
+    const topScore = hardMatches[0].totalScore;
+    const tiedForTop = hardMatches.filter(s => s.totalScore === topScore);
+    const bestFit = vendor === "Fortinet" && tiedForTop.length > 1
+      ? fortinetTieBreaker(tiedForTop)
+      : tiedForTop[0];
+
+    // Full-match: highest scoring model meeting hard + all preferred
     const fullMatches = hardMatches.filter(scored => scored.meetsAllPreferred);
     const fullMatch = fullMatches.length > 0 ? fullMatches[0] : null;
 
@@ -496,10 +521,11 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
     }
 
     // Upgrades: everything in hardMatches above the recommended, excluding oversizedAlternative
+    // Sort by throughput ascending for growth pick selection
     const upgrades = hardMatches.filter(scored =>
       scored.appliance.id !== recommended.appliance.id &&
       scored.appliance.ngfwThroughputMbps >= recommended.appliance.ngfwThroughputMbps
-    );
+    ).sort((a, b) => a.appliance.ngfwThroughputMbps - b.appliance.ngfwThroughputMbps);
 
     // Growth pick: from upgrades, find a model with moderate room to grow
     // Target: 1.5–3× the required bandwidth, and must be above the recommended model
