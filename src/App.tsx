@@ -119,7 +119,7 @@ export default function App() {
           )}
 
           {currentStep === 3 && (
-            <Results results={results} features={features} />
+            <Results results={results} features={features} selectedFeatures={selectedFeatures} />
           )}
 
           {/* Navigation */}

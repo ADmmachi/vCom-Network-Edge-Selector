@@ -29,6 +29,40 @@ function compareModels(modelA: string, modelB: string): number {
   return modelA.localeCompare(modelB);
 }
 
+function isBaseModel(model: string, vendor: string, selectedFeatures: string[]): boolean {
+  const wifiRequested = selectedFeatures.includes("wifi");
+  const cellularRequested = selectedFeatures.includes("cellular");
+
+  if (vendor === "Fortinet") {
+    // WiFi models (FortiWiFi) are non-base unless WiFi was requested
+    if (model.includes("FortiWiFi") && !wifiRequested) return false;
+    // 5G models are non-base unless cellular was requested
+    if (model.includes("-5G") && !cellularRequested) return false;
+    // SFP-PoE is non-base (but plain SFP is base)
+    if (model.includes("-SFP-PoE")) return false;
+    return true;
+  }
+
+  if (vendor === "Cisco Meraki") {
+    // W suffix = WiFi, non-base unless WiFi requested
+    if (/W$/i.test(model) && !wifiRequested) return false;
+    if (/CW$/i.test(model) && !wifiRequested && !cellularRequested) return false;
+    // C prefix on MX models = cellular, non-base unless cellular requested
+    if (/^MX\d+C$/i.test(model) && !cellularRequested) return false;
+    return true;
+  }
+
+  if (vendor === "VeloCloud") {
+    // -W suffix = WiFi, non-base unless WiFi requested
+    if (model.includes("-W") && !wifiRequested) return false;
+    // -5G suffix = cellular, non-base unless cellular requested
+    if (model.includes("-5G") && !cellularRequested) return false;
+    return true;
+  }
+
+  return true;
+}
+
 function InterfaceTable({ interfaces, maxRows }: { interfaces: ApplianceInterface[]; maxRows?: number }) {
   return (
     <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, overflow: "hidden" }}>
@@ -291,8 +325,8 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
   );
 }
 
-function VendorColumn({ vendorRec, featureMap, maxInterfaceRows, maxCircuitRows }: {
-  vendorRec: VendorRecommendation; featureMap: Record<string, string>; maxInterfaceRows: number; maxCircuitRows: number;
+function VendorColumn({ vendorRec, featureMap, maxInterfaceRows, maxCircuitRows, selectedFeatures }: {
+  vendorRec: VendorRecommendation; featureMap: Record<string, string>; maxInterfaceRows: number; maxCircuitRows: number; selectedFeatures: string[];
 }) {
   const [showUpgrades, setShowUpgrades] = useState(false);
   const [showNonMatching, setShowNonMatching] = useState(false);
@@ -332,9 +366,15 @@ function VendorColumn({ vendorRec, featureMap, maxInterfaceRows, maxCircuitRows 
             <Box mt={8} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {[...vendorRec.upgrades]
                 .sort((a, b) => {
+                  // Growth pick always first
                   const aG = vendorRec.growthPick?.appliance.id === a.appliance.id ? 1 : 0;
                   const bG = vendorRec.growthPick?.appliance.id === b.appliance.id ? 1 : 0;
                   if (aG !== bG) return bG - aG;
+                  // Base models above non-base models (unless user requested WiFi/cellular)
+                  const aBase = isBaseModel(a.appliance.model, vendorRec.vendor, selectedFeatures) ? 1 : 0;
+                  const bBase = isBaseModel(b.appliance.model, vendorRec.vendor, selectedFeatures) ? 1 : 0;
+                  if (aBase !== bBase) return bBase - aBase;
+                  // Within same tier, sort by score then model name
                   if (b.percentageScore !== a.percentageScore) return b.percentageScore - a.percentageScore;
                   return compareModels(a.appliance.model, b.appliance.model);
                 })
@@ -378,9 +418,10 @@ function VendorColumn({ vendorRec, featureMap, maxInterfaceRows, maxCircuitRows 
 interface ResultsProps {
   results: RecommendationResult | null;
   features: Feature[];
+  selectedFeatures: string[];
 }
 
-export default function Results({ results, features }: ResultsProps) {
+export default function Results({ results, features, selectedFeatures }: ResultsProps) {
   const featureMap: Record<string, string> = {};
   features.forEach(f => { featureMap[f.id] = f.name; });
 
@@ -448,7 +489,7 @@ export default function Results({ results, features }: ResultsProps) {
           style={columnCount === 1 ? { maxWidth: 512, margin: "0 auto" } : undefined}
         >
           {visibleVendors.map(vr => (
-            <VendorColumn key={vr.vendor} vendorRec={vr} featureMap={featureMap} maxInterfaceRows={maxInterfaceRows} maxCircuitRows={maxCircuitRows} />
+            <VendorColumn key={vr.vendor} vendorRec={vr} featureMap={featureMap} maxInterfaceRows={maxInterfaceRows} maxCircuitRows={maxCircuitRows} selectedFeatures={selectedFeatures} />
           ))}
         </SimpleGrid>
       )}
