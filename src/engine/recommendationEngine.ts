@@ -466,12 +466,53 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
       })[0];
     };
 
-    // Best-fit: highest scoring model meeting hard requirements (with Fortinet tie-breaker)
+    // --- Cisco Meraki tie-breaker: prefer base model, use hierarchy rank ---
+    const merakiTieBreaker = (candidates: ScoredAppliance[]): ScoredAppliance => {
+      if (candidates.length === 1) return candidates[0];
+
+      // Define the Meraki model hierarchy (lower rank = preferred)
+      const hierarchyOrder: Record<string, number> = {
+        "MX67": 10, "MX67W": 11, "MX67C": 12,
+        "MX68": 20, "MX68W": 21, "MX68CW": 22,
+        "MX75": 30,
+        "MX85": 40,
+        "C8111-G2-MX": 50, "C8121-G2-MX": 51,
+        "MX95": 60,
+        "MX105": 70,
+        "MX250": 80,
+        "MX450": 90,
+        "C8455-G2-MX": 100,
+      };
+
+      const getRank = (model: string): number => hierarchyOrder[model] ?? 999;
+      const isBaseModel = (model: string): boolean => {
+        // Base models: no W, C, or CW suffix (e.g., MX67, MX68, MX75, MX85, MX95, etc.)
+        return !(/W|C/i.test(model.replace(/^(MX|C)\d+/i, "")));
+      };
+
+      return candidates.sort((a, b) => {
+        const aBase = isBaseModel(a.appliance.model);
+        const bBase = isBaseModel(b.appliance.model);
+        // Prefer base models unless requirements call for non-base
+        if (aBase !== bBase) return aBase ? -1 : 1;
+        // Then use hierarchy rank (lower = preferred)
+        return getRank(a.appliance.model) - getRank(b.appliance.model);
+      })[0];
+    };
+
+    // Best-fit: highest scoring model meeting hard requirements (with vendor-specific tie-breakers)
     const topScore = hardMatches[0].totalScore;
     const tiedForTop = hardMatches.filter(s => s.totalScore === topScore);
-    const bestFit = vendor === "Fortinet" && tiedForTop.length > 1
-      ? fortinetTieBreaker(tiedForTop)
-      : tiedForTop[0];
+    let bestFit: ScoredAppliance;
+    if (tiedForTop.length === 1) {
+      bestFit = tiedForTop[0];
+    } else if (vendor === "Fortinet") {
+      bestFit = fortinetTieBreaker(tiedForTop);
+    } else if (vendor === "Cisco Meraki") {
+      bestFit = merakiTieBreaker(tiedForTop);
+    } else {
+      bestFit = tiedForTop[0];
+    }
 
     // Full-match: highest scoring model meeting hard + all preferred
     const fullMatches = hardMatches.filter(scored => scored.meetsAllPreferred);
