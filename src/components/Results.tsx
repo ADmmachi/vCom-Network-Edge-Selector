@@ -100,7 +100,7 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
       </Box>
       <SimpleGrid cols={3} spacing={6} mb="sm">
         {[
-          ["NGFW Throughput", formatThroughput(appliance.ngfwThroughputMbps)],
+          ["Throughput", formatThroughput(appliance.ngfwThroughputMbps)],
           ["Capacity", formatThroughput(appliance.capacityMbps)],
           ["Form Factor", appliance.formFactor],
           ["Price", appliance.priceRange],
@@ -215,7 +215,7 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
       </Box>
       <SimpleGrid cols={3} spacing={6} mb={8}>
         <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
-          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>NGFW Throughput</Text>
+          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>Throughput</Text>
           <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{formatThroughput(appliance.ngfwThroughputMbps)}</Text>
         </Box>
         <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>

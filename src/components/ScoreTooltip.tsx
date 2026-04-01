@@ -60,7 +60,7 @@ export default function ScoreTooltip({ result, featureMap, children }: ScoreTool
           {throughput && (
             <Box mb={8}>
               <Box style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-                <Text fw={600} style={{ color: "#909296", fontSize: "0.6rem" }}>NGFW Throughput</Text>
+                <Text fw={600} style={{ color: "#909296", fontSize: "0.6rem" }}>Throughput</Text>
                 <Text fw={700} style={{ color: throughput.meetsRequirement ? "#51cf66" : "#ff6b6b", fontSize: "0.6rem" }}>{Math.round(throughput.score)}/{throughput.max}</Text>
               </Box>
               <Text style={{ color: "#909296", fontSize: "0.6rem" }}>
