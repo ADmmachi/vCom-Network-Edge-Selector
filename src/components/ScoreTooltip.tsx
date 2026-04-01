@@ -58,8 +58,18 @@ export default function ScoreTooltip({ result, featureMap, children }: ScoreTool
                   // HA requires a physical port for non-Meraki vendors
                   const haRequiresPort = result.haNote !== null && result.appliance.vendor !== "Cisco Meraki";
                   const haPortMatched = haRequiresPort && result.haInterfaceMapping !== null;
-                  if (haRequiresPort) {
-                    return `${wanMatched + (haPortMatched ? 1 : 0)}/${wanTotal + 1} ports matched (incl. HA)`;
+                  // Cellular requires an interface (built-in modem or external gateway via WAN RJ45)
+                  const cellularRequiresPort = result.cellularInterfaceMapping !== null || (result.matchDetails.features?.missing.includes("cellularModem") ?? false);
+                  const cellularPortMatched = result.cellularInterfaceMapping !== null;
+                  const extraRequired = (haRequiresPort ? 1 : 0) + (cellularRequiresPort ? 1 : 0);
+                  const extraMatched = (haRequiresPort && haPortMatched ? 1 : 0) + (cellularRequiresPort && cellularPortMatched ? 1 : 0);
+                  const totalMatched = wanMatched + extraMatched;
+                  const totalRequired = wanTotal + extraRequired;
+                  const extras: string[] = [];
+                  if (haRequiresPort) extras.push("HA");
+                  if (cellularRequiresPort) extras.push("Cellular");
+                  if (extras.length > 0) {
+                    return `${totalMatched}/${totalRequired} ports matched (incl. ${extras.join(", ")})`;
                   }
                   return `${wanMatched}/${wanTotal} ports matched`;
                 })()}
