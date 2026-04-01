@@ -131,8 +131,8 @@ export interface Appliance {
 
 export const circuitTypes: CircuitType[] = [
   { id: "dia", name: "Dedicated Internet (DIA)", category: "dedicated" },
-  { id: "broadband_fiber", name: "Fiber Broadband", category: "broadband" },
   { id: "broadband_cable", name: "Cable Broadband", category: "broadband" },
+  { id: "broadband_fiber", name: "Fiber Broadband", category: "broadband" },
   { id: "fixed_wireless", name: "Fixed Wireless", category: "wireless" },
   { id: "starlink", name: "LEO / Satellite", category: "satellite" },
   { id: "other", name: "Other", category: "other" },

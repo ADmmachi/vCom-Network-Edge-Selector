@@ -30,7 +30,7 @@ export default function App() {
     switch (currentStep) {
       case 1:
         return circuits.length > 0 &&
-          circuits.every(c => c.circuitTypeId !== "" && c.bandwidthMbps > 0);
+          circuits.every(c => c.circuitTypeId !== "" && c.bandwidthMbps > 0 && c.handoffId !== "");
       default:
         return true;
     }
