@@ -59,11 +59,19 @@ export interface RecommendationResult {
   totalEvaluated: number;
 }
 
-const WEIGHTS = {
-  interfaceMatch: 50,
-  throughput: 30,
-  featureCoverage: 20,
-};
+// Dynamic weight calculation — total always equals 100
+// Each requested feature (including HA) takes 2 pts from Interfaces and 1 pt from Throughput = 3 pts per feature
+// HA and Cellular carry more weight because they also affect the interface denominator
+function calculateWeights(numFeatures: number): { interfaceMatch: number; throughput: number; featureCoverage: number } {
+  const featurePoints = numFeatures * 3;
+  const interfaceReduction = numFeatures * 2;
+  const throughputReduction = numFeatures * 1;
+  return {
+    interfaceMatch: 60 - interfaceReduction,
+    throughput: 40 - throughputReduction,
+    featureCoverage: featurePoints,
+  };
+}
 
 const OVERSIZE_THROUGHPUT_RATIO = 2.0;
 const GROWTH_THROUGHPUT_MIN_RATIO = 1.5;
@@ -120,6 +128,10 @@ function countAppliancePoePorts(appliance: Appliance): number {
 }
 
 function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): ScoredAppliance {
+  // Count total features including HA for dynamic weight calculation
+  const totalFeatureCount = criteria.features.length + (criteria.requireHA ? 1 : 0);
+  const WEIGHTS = calculateWeights(totalFeatureCount);
+
   let totalScore = 0;
   let maxPossibleScore = 0;
   const matchDetails: MatchDetails = {};
@@ -496,15 +508,23 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
     }
   }
 
-  // --- Feature scoring (for percentage display) ---
-  if (criteria.features.length > 0) {
-    const matchedFeatures = criteria.features.filter(featureId => {
+  // --- Feature scoring (includes HA as a feature) ---
+  // HA is tracked as a feature for scoring purposes (separate from its interface impact)
+  const haMet = criteria.requireHA ? (haNote !== null && !haNote.includes("No available HA port")) : true;
+
+  if (totalFeatureCount > 0) {
+    // Build combined feature list including HA
+    const allRequestedFeatures: string[] = [...criteria.features];
+    if (criteria.requireHA) allRequestedFeatures.push("ha");
+
+    const matchedFeatures = allRequestedFeatures.filter(featureId => {
       if (featureId === "poe") return poeMet;
       if (featureId === "wifi6") return wifiMet;
       if (featureId === "lte_failover") return cellularMet;
+      if (featureId === "ha") return haMet;
       return appliance.features.includes(featureId);
     });
-    const featureRatio = matchedFeatures.length / criteria.features.length;
+    const featureRatio = matchedFeatures.length / allRequestedFeatures.length;
     const featureScore = WEIGHTS.featureCoverage * featureRatio;
     totalScore += featureScore;
     maxPossibleScore += WEIGHTS.featureCoverage;
@@ -512,12 +532,12 @@ function scoreAppliance(appliance: Appliance, criteria: SelectionCriteria): Scor
       score: featureScore,
       max: WEIGHTS.featureCoverage,
       matched: matchedFeatures,
-      missing: criteria.features.filter(featureId => !matchedFeatures.includes(featureId)),
+      missing: allRequestedFeatures.filter(featureId => !matchedFeatures.includes(featureId)),
     };
   }
 
   const meetsHardCriteria = allInterfacesMatched && throughputMet;
-  const meetsAllPreferred = poeMet && wifiMet && cellularMet;
+  const meetsAllPreferred = poeMet && wifiMet && cellularMet && haMet;
 
   // --- End of Sale penalty (10% reduction) ---
   if (appliance.endOfSale) {

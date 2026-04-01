@@ -126,8 +126,8 @@ function NoteBox({ emoji, text, color }: { emoji: string; text: string; color: s
   );
 }
 
-function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows }: {
-  result: ScoredAppliance; featureMap: Record<string, string>; maxInterfaceRows: number; maxCircuitRows: number;
+function RecommendedCard({ result, featureMap, tooltipFeatureMap, maxInterfaceRows, maxCircuitRows }: {
+  result: ScoredAppliance; featureMap: Record<string, string>; tooltipFeatureMap: Record<string, string>; maxInterfaceRows: number; maxCircuitRows: number;
 }) {
   const { appliance, matchDetails } = result;
   return (
@@ -152,7 +152,7 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
           <Text style={{ fontSize: "0.6rem", color: "#adb5bd" }}>{appliance.category}</Text>
         </Box>
         <Box style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-          <ScoreTooltip result={result} featureMap={featureMap}>
+          <ScoreTooltip result={result} featureMap={tooltipFeatureMap}>
             <Text span style={{
               fontSize: "0.65rem", fontWeight: 700, padding: "2px 8px", borderRadius: 99, cursor: "help",
               backgroundColor: result.percentageScore >= 75 ? "rgba(14,135,66,0.08)" : result.percentageScore >= 50 ? "rgba(238,124,19,0.08)" : "rgba(255,107,107,0.08)",
@@ -252,8 +252,8 @@ function RecommendedCard({ result, featureMap, maxInterfaceRows, maxCircuitRows 
   );
 }
 
-function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthReason }: {
-  result: ScoredAppliance; featureMap: Record<string, string>; isNonMatching?: boolean; isGrowthPick?: boolean; growthReason?: string | null;
+function CompactCard({ result, featureMap, tooltipFeatureMap, isNonMatching, isGrowthPick, growthReason }: {
+  result: ScoredAppliance; featureMap: Record<string, string>; tooltipFeatureMap: Record<string, string>; isNonMatching?: boolean; isGrowthPick?: boolean; growthReason?: string | null;
 }) {
   const { appliance, percentageScore } = result;
   return (
@@ -309,7 +309,7 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
           <Text style={{ fontSize: "0.6rem", color: "#adb5bd" }}>{appliance.category}</Text>
         </Box>
         <Box style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-          <ScoreTooltip result={result} featureMap={featureMap}>
+          <ScoreTooltip result={result} featureMap={tooltipFeatureMap}>
             <Text span style={{
               fontSize: "0.65rem", fontWeight: 700, padding: "2px 8px", borderRadius: 99, cursor: "help",
               backgroundColor: percentageScore >= 75 ? "rgba(14,135,66,0.08)" : percentageScore >= 50 ? "rgba(238,124,19,0.08)" : "rgba(255,107,107,0.08)",
@@ -427,8 +427,8 @@ function CompactCard({ result, featureMap, isNonMatching, isGrowthPick, growthRe
   );
 }
 
-function VendorColumn({ vendorRec, featureMap, maxInterfaceRows, maxCircuitRows, selectedFeatures }: {
-  vendorRec: VendorRecommendation; featureMap: Record<string, string>; maxInterfaceRows: number; maxCircuitRows: number; selectedFeatures: string[];
+function VendorColumn({ vendorRec, featureMap, tooltipFeatureMap, maxInterfaceRows, maxCircuitRows, selectedFeatures }: {
+  vendorRec: VendorRecommendation; featureMap: Record<string, string>; tooltipFeatureMap: Record<string, string>; maxInterfaceRows: number; maxCircuitRows: number; selectedFeatures: string[];
 }) {
   const [showUpgrades, setShowUpgrades] = useState(false);
   const [showNonMatching, setShowNonMatching] = useState(false);
@@ -447,7 +447,7 @@ function VendorColumn({ vendorRec, featureMap, maxInterfaceRows, maxCircuitRows,
         {!hasRecommendation && <Text style={{ fontSize: "0.6rem", color: "#adb5bd", marginTop: 4 }}>No compatible model</Text>}
       </Box>
       {hasRecommendation && (
-        <RecommendedCard result={vendorRec.recommended!} featureMap={featureMap} maxInterfaceRows={maxInterfaceRows} maxCircuitRows={maxCircuitRows} />
+        <RecommendedCard result={vendorRec.recommended!} featureMap={featureMap} tooltipFeatureMap={tooltipFeatureMap} maxInterfaceRows={maxInterfaceRows} maxCircuitRows={maxCircuitRows} />
       )}
       {vendorRec.oversizedAlternative && (
         <Paper mt="sm" p="sm" radius="md" bg="rgba(1,76,113,0.03)" withBorder style={{ borderColor: "rgba(1,76,113,0.15)" }}>
@@ -455,7 +455,7 @@ function VendorColumn({ vendorRec, featureMap, maxInterfaceRows, maxCircuitRows,
           <Text style={{ fontSize: "0.6rem", color: "#868e96", marginBottom: 8 }}>
             The <Text span fw={700}>{vendorRec.oversizedAlternative.appliance.model}</Text> meets all preferred requirements ({formatThroughput(vendorRec.oversizedAlternative.appliance.ngfwThroughputMbps)} NGFW throughput) but may be oversized for this site.
           </Text>
-          <CompactCard result={vendorRec.oversizedAlternative} featureMap={featureMap} />
+          <CompactCard result={vendorRec.oversizedAlternative} featureMap={featureMap} tooltipFeatureMap={tooltipFeatureMap} />
         </Paper>
       )}
       {vendorRec.upgrades.length > 0 && (
@@ -485,6 +485,7 @@ function VendorColumn({ vendorRec, featureMap, maxInterfaceRows, maxCircuitRows,
                     key={scored.appliance.id}
                     result={scored}
                     featureMap={featureMap}
+                    tooltipFeatureMap={tooltipFeatureMap}
                     isGrowthPick={vendorRec.growthPick?.appliance.id === scored.appliance.id}
                     growthReason={vendorRec.growthPick?.appliance.id === scored.appliance.id ? vendorRec.growthReason : null}
                   />
@@ -507,7 +508,7 @@ function VendorColumn({ vendorRec, featureMap, maxInterfaceRows, maxCircuitRows,
                   return compareModels(a.appliance.model, b.appliance.model);
                 })
                 .map(scored => (
-                  <CompactCard key={scored.appliance.id} result={scored} featureMap={featureMap} isNonMatching />
+                  <CompactCard key={scored.appliance.id} result={scored} featureMap={featureMap} tooltipFeatureMap={tooltipFeatureMap} isNonMatching />
                 ))}
             </Box>
           )}
@@ -526,6 +527,13 @@ interface ResultsProps {
 export default function Results({ results, features, selectedFeatures }: ResultsProps) {
   const featureMap: Record<string, string> = {};
   features.forEach(f => { featureMap[f.id] = f.name; });
+  // Short names for tooltip display (concise inline format: ✓HA ✓Wi-Fi ✗PoE)
+  const tooltipFeatureMap: Record<string, string> = {
+    ha: "HA",
+    wifi6: "Wi-Fi",
+    lte_failover: "Cellular",
+    poe: "PoE",
+  };
 
   const defaultEnabledVendors = useMemo(() => {
     if (!results) return [];
@@ -591,7 +599,7 @@ export default function Results({ results, features, selectedFeatures }: Results
           style={columnCount === 1 ? { maxWidth: 512, margin: "0 auto" } : undefined}
         >
           {visibleVendors.map(vr => (
-            <VendorColumn key={vr.vendor} vendorRec={vr} featureMap={featureMap} maxInterfaceRows={maxInterfaceRows} maxCircuitRows={maxCircuitRows} selectedFeatures={selectedFeatures} />
+            <VendorColumn key={vr.vendor} vendorRec={vr} featureMap={featureMap} tooltipFeatureMap={tooltipFeatureMap} maxInterfaceRows={maxInterfaceRows} maxCircuitRows={maxCircuitRows} selectedFeatures={selectedFeatures} />
           ))}
         </SimpleGrid>
       )}

@@ -100,11 +100,19 @@ export default function ScoreTooltip({ result, featureMap, children }: ScoreTool
                 <Text fw={600} style={{ color: "#909296", fontSize: "0.6rem" }}>Features</Text>
                 <Text fw={700} style={{ color: features.missing.length === 0 ? "#51cf66" : "#fcc419", fontSize: "0.6rem" }}>{Math.round(features.score)}/{features.max}</Text>
               </Box>
-              <Box style={{ color: "#909296", fontSize: "0.6rem" }}>
-                {features.matched.length > 0 && <Text style={{ fontSize: "0.6rem" }}><Text span style={{ color: "#51cf66" }}>✓</Text> {features.matched.map(f => featureMap[f] || f).join(", ")}</Text>}
-                {features.missing.length > 0 && <Text style={{ fontSize: "0.6rem" }}><Text span style={{ color: "#ff6b6b" }}>✗</Text> {features.missing.map(f => featureMap[f] || f).join(", ")}</Text>}
-                {features.matched.length === 0 && features.missing.length === 0 && <Text style={{ fontSize: "0.6rem" }}>No features required</Text>}
-              </Box>
+              <Text style={{ color: "#909296", fontSize: "0.6rem" }}>
+                {[...features.matched, ...features.missing].map((f, i) => {
+                  const isMet = features.matched.includes(f);
+                  const shortName = featureMap[f] || f;
+                  return (
+                    <Text key={f} span style={{ fontSize: "0.6rem" }}>
+                      {i > 0 && " "}
+                      <Text span style={{ color: isMet ? "#51cf66" : "#ff6b6b" }}>{isMet ? "✓" : "✗"}</Text>
+                      {shortName}
+                    </Text>
+                  );
+                })}
+              </Text>
             </Box>
           )}
           {result.appliance.endOfSale && (
