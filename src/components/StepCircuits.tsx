@@ -3,6 +3,7 @@ import {
   type CircuitType,
   type CircuitEntry,
   getDefaultHandoff,
+  getHandoffMaxSpeed,
   getHandoffOptionsForCircuitType,
   getDownloadOptions,
   getUploadOptions,
@@ -69,7 +70,27 @@ export default function StepCircuits({ circuitTypes, circuits, onCircuitsChange 
         if (circuit.id !== circuitId) return circuit;
         const symmetrical = isSymmetrical(circuit.circuitTypeId);
         const isOther = circuit.circuitTypeId === "other";
-        const newHandoff = isOther ? circuit.handoffId : getDefaultHandoff(circuit.circuitTypeId, downloadMbps);
+        const wasOverridden = handoffOverridden[circuit.id] ?? false;
+
+        let newHandoff: string;
+        if (isOther) {
+          // For "Other": if current handoff is now incompatible, clear it so user must re-select
+          const currentMaxSpeed = circuit.handoffId ? getHandoffMaxSpeed(circuit.handoffId) : 0;
+          newHandoff = (circuit.handoffId && downloadMbps > currentMaxSpeed) ? "" : circuit.handoffId;
+        } else if (wasOverridden) {
+          // User manually changed handoff — check if it's still compatible
+          const currentMaxSpeed = circuit.handoffId ? getHandoffMaxSpeed(circuit.handoffId) : 0;
+          if (downloadMbps > currentMaxSpeed) {
+            // Incompatible — reset to auto-default
+            newHandoff = getDefaultHandoff(circuit.circuitTypeId, downloadMbps);
+            setHandoffOverridden(prev => ({ ...prev, [circuitId]: false }));
+          } else {
+            newHandoff = circuit.handoffId;
+          }
+        } else {
+          newHandoff = getDefaultHandoff(circuit.circuitTypeId, downloadMbps);
+        }
+
         return {
           ...circuit,
           bandwidthMbps: downloadMbps,
@@ -78,7 +99,7 @@ export default function StepCircuits({ circuitTypes, circuits, onCircuitsChange 
         };
       })
     );
-    if (!circuits.find(c => c.id === circuitId && c.circuitTypeId === "other")) {
+    if (!circuits.find(c => c.id === circuitId && c.circuitTypeId === "other") && !(handoffOverridden[circuitId] ?? false)) {
       setHandoffOverridden(prev => ({ ...prev, [circuitId]: false }));
     }
   };
@@ -352,9 +373,21 @@ export default function StepCircuits({ circuitTypes, circuits, onCircuitsChange 
                         isOther && circuit.handoffId === ""
                           ? [
                               { label: "Select hand-off...", value: "", disabled: true },
-                              ...handoffOptions.map(h => ({ label: h.name, value: h.id })),
+                              ...handoffOptions.map(h => ({
+                                label: circuit.bandwidthMbps > getHandoffMaxSpeed(h.id)
+                                  ? `${h.name} (max ${getHandoffMaxSpeed(h.id) >= 1000 ? `${getHandoffMaxSpeed(h.id) / 1000} Gbps` : `${getHandoffMaxSpeed(h.id)} Mbps`})`
+                                  : h.name,
+                                value: h.id,
+                                disabled: circuit.bandwidthMbps > getHandoffMaxSpeed(h.id),
+                              })),
                             ]
-                          : handoffOptions.map(h => ({ label: h.name, value: h.id }))
+                          : handoffOptions.map(h => ({
+                              label: circuit.bandwidthMbps > getHandoffMaxSpeed(h.id)
+                                ? `${h.name} (max ${getHandoffMaxSpeed(h.id) >= 1000 ? `${getHandoffMaxSpeed(h.id) / 1000} Gbps` : `${getHandoffMaxSpeed(h.id)} Mbps`})`
+                                : h.name,
+                              value: h.id,
+                              disabled: circuit.bandwidthMbps > getHandoffMaxSpeed(h.id),
+                            }))
                       }
                       styles={{
                         input: {

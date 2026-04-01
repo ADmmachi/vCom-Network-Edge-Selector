@@ -148,6 +148,25 @@ export const handoffTypes: HandoffType[] = [
 ];
 
 /**
+ * Returns the maximum speed capability (in Mbps) for a given handoff type.
+ */
+export function getHandoffMaxSpeed(handoffId: string): number {
+  switch (handoffId) {
+    case "copper_rj45":
+    case "fiber_smf_lc":
+    case "fiber_mmf_lc":
+      return 1000;
+    case "mgig_2_5g":
+      return 2500;
+    case "fiber_10g_smf":
+    case "fiber_10g_mmf":
+      return 10000;
+    default:
+      return Infinity;
+  }
+}
+
+/**
  * Returns the default handoff ID for a given circuit type and bandwidth.
  * DIA < 100 Mbps: 1GbE Copper (RJ45)
  * DIA 100 Mbps – 1 Gbps: 1GbE Single-Mode (SMF/LC)
@@ -165,6 +184,7 @@ export function getDefaultHandoff(circuitTypeId: string, bandwidthMbps: number):
     case "fixed_wireless":
     case "starlink":
     case "other":
+      if (bandwidthMbps > 1000) return "mgig_2_5g";
       return "copper_rj45";
     default:
       return "copper_rj45";
