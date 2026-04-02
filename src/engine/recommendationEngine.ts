@@ -51,7 +51,6 @@ export interface VendorRecommendation {
   growthReason: string | null;
   upgrades: ScoredAppliance[];
   nonMatching: ScoredAppliance[];
-  oversizedAlternative: ScoredAppliance | null;
 }
 
 export interface RecommendationResult {
@@ -655,29 +654,18 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
         growthReason: null,
         upgrades: [],
         nonMatching,
-        oversizedAlternative: null,
       });
       continue;
     }
 
-    // --- Fortinet tie-breaker: prefer lowest-numbered G model, then lowest-numbered non-G ---
+    // --- Fortinet tie-breaker: prefer lowest model number ---
     const fortinetTieBreaker = (candidates: ScoredAppliance[]): ScoredAppliance => {
       if (candidates.length === 1) return candidates[0];
 
-      const parseModel = (model: string): { number: number; isG: boolean } => {
-        const match = model.match(/(\d+)(G|F)?/i);
-        const num = match ? parseInt(match[1], 10) : 9999;
-        const isG = match ? (match[2] || "").toUpperCase() === "G" : false;
-        return { number: num, isG };
-      };
-
       return candidates.sort((a, b) => {
-        const modelA = parseModel(a.appliance.model);
-        const modelB = parseModel(b.appliance.model);
-        // Prefer G models over non-G
-        if (modelA.isG !== modelB.isG) return modelA.isG ? -1 : 1;
-        // Then lowest model number
-        return modelA.number - modelB.number;
+        const numA = parseInt(a.appliance.model.match(/\d+/)?.[0] || "9999", 10);
+        const numB = parseInt(b.appliance.model.match(/\d+/)?.[0] || "9999", 10);
+        return numA - numB;
       })[0];
     };
 
@@ -741,7 +729,10 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
     const fullMatch = fullMatches.length > 0 ? fullMatches[0] : null;
 
     let recommended: ScoredAppliance;
-    let oversizedAlternative: ScoredAppliance | null = null;
+
+    // Cellular-aware oversize threshold: when cellular is requested, allow up to 3× oversize
+    // to prefer models with built-in cellular modem over smaller models needing external gateway
+    const effectiveOversizeRatio = cellularRequested ? GROWTH_THROUGHPUT_MAX_RATIO : OVERSIZE_THROUGHPUT_RATIO;
 
     if (bestFit.meetsAllPreferred) {
       // Best-fit already meets all preferred — easy case
@@ -750,22 +741,19 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
       // There's a model that meets everything — is it too big?
       const throughputRatio = fullMatch.appliance.ngfwThroughputMbps / bestFit.appliance.ngfwThroughputMbps;
 
-      if (throughputRatio <= OVERSIZE_THROUGHPUT_RATIO) {
+      if (throughputRatio <= effectiveOversizeRatio) {
         // Acceptable step-up — recommend the full match
         recommended = fullMatch;
       } else {
-        // Too big — recommend the best-fit with notes, reference the full match
+        // Too big — recommend the best-fit with notes
         recommended = bestFit;
-        oversizedAlternative = fullMatch;
-
-        // Oversized alternative reference removed — cellular note is handled separately
       }
     } else {
       // No model meets all preferred at any size — recommend best-fit
       recommended = bestFit;
     }
 
-    // Upgrades: everything in hardMatches above the recommended, excluding oversizedAlternative
+    // Upgrades: everything in hardMatches above the recommended
     // Sort by throughput ascending for growth pick selection
     const upgrades = hardMatches.filter(scored =>
       scored.appliance.id !== recommended.appliance.id &&
@@ -819,7 +807,6 @@ export function getRecommendations(criteria: SelectionCriteria): RecommendationR
       growthReason,
       upgrades,
       nonMatching,
-      oversizedAlternative,
     });
   }
 

@@ -449,15 +449,6 @@ function VendorColumn({ vendorRec, featureMap, tooltipFeatureMap, maxInterfaceRo
       {hasRecommendation && (
         <RecommendedCard result={vendorRec.recommended!} featureMap={featureMap} tooltipFeatureMap={tooltipFeatureMap} maxInterfaceRows={maxInterfaceRows} maxCircuitRows={maxCircuitRows} />
       )}
-      {vendorRec.oversizedAlternative && (
-        <Paper mt="sm" p="sm" radius="md" bg="rgba(1,76,113,0.03)" withBorder style={{ borderColor: "rgba(1,76,113,0.15)" }}>
-          <Text style={{ fontSize: "0.65rem", fontWeight: 600, color: "#014C71", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Alternative with built-in features</Text>
-          <Text style={{ fontSize: "0.6rem", color: "#868e96", marginBottom: 8 }}>
-            The <Text span fw={700}>{vendorRec.oversizedAlternative.appliance.model}</Text> meets all preferred requirements ({formatThroughput(vendorRec.oversizedAlternative.appliance.ngfwThroughputMbps)} NGFW throughput) but may be oversized for this site.
-          </Text>
-          <CompactCard result={vendorRec.oversizedAlternative} featureMap={featureMap} tooltipFeatureMap={tooltipFeatureMap} />
-        </Paper>
-      )}
       {vendorRec.upgrades.length > 0 && (
         <Box mt="sm">
           <UnstyledButton onClick={() => setShowUpgrades(!showUpgrades)} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.7rem", fontWeight: 500, color: "#014C71" }}>
