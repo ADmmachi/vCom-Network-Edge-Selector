@@ -1,0 +1,17 @@
+/* vCom NetworkSelector v2.0 — Light theme base styles */
+body {
+  margin: 0;
+  background-color: #FAFAF7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure smooth transitions */
+* {
+  box-sizing: border-box;
+}
+
+/* NativeSelect fix for consistent appearance */
+select {
+  cursor: pointer;
+}

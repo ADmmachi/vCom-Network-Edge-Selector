@@ -1,0 +1,611 @@
+import { useState, useMemo } from "react";
+import { type Feature, type ApplianceInterface, circuitTypes } from "../data/appliances";
+import { type RecommendationResult, type ScoredAppliance, type VendorRecommendation } from "../engine/recommendationEngine";
+import { Box, Text, Group, Paper, SimpleGrid, UnstyledButton, Loader, Tooltip } from "@mantine/core";
+import { IconCheck, IconX, IconChevronDown, IconChevronRight } from "@tabler/icons-react";
+import ScoreTooltip from "./ScoreTooltip";
+
+function formatThroughput(mbps: number): string {
+  return mbps >= 1000 ? `${mbps / 1000} Gbps` : `${mbps} Mbps`;
+}
+
+function extractModelKey(model: string): { number: number; letter: string; suffixLen: number; suffix: string } {
+  const match = model.match(/(\d+)([A-Z])?(-.*)?$/);
+  if (!match) return { number: 0, letter: "", suffixLen: 0, suffix: "" };
+  return { number: parseInt(match[1], 10), letter: match[2] || "", suffixLen: (match[3] || "").length, suffix: match[3] || "" };
+}
+
+function compareModels(modelA: string, modelB: string): number {
+  const a = extractModelKey(modelA);
+  const b = extractModelKey(modelB);
+  if (a.number !== b.number) return a.number - b.number;
+  if (a.letter !== b.letter) {
+    if (!a.letter) return -1;
+    if (!b.letter) return 1;
+    return a.letter.localeCompare(b.letter);
+  }
+  if (a.suffixLen !== b.suffixLen) return a.suffixLen - b.suffixLen;
+  if (a.suffix !== b.suffix) return a.suffix.localeCompare(b.suffix);
+  return modelA.localeCompare(modelB);
+}
+
+function isBaseModel(model: string, vendor: string, selectedFeatures: string[]): boolean {
+  const wifiRequested = selectedFeatures.includes("wifi");
+  const cellularRequested = selectedFeatures.includes("cellular");
+
+  if (vendor === "Fortinet") {
+    // WiFi models (FortiWiFi) are non-base unless WiFi was requested
+    if (model.includes("FortiWiFi") && !wifiRequested) return false;
+    // 5G models are non-base unless cellular was requested
+    if (model.includes("-5G") && !cellularRequested) return false;
+    // SFP-PoE is non-base (but plain SFP is base)
+    if (model.includes("-SFP-PoE")) return false;
+    return true;
+  }
+
+  if (vendor === "Cisco Meraki") {
+    // W suffix = WiFi, non-base unless WiFi requested
+    if (/W$/i.test(model) && !wifiRequested) return false;
+    if (/CW$/i.test(model) && !wifiRequested && !cellularRequested) return false;
+    // C prefix on MX models = cellular, non-base unless cellular requested
+    if (/^MX\d+C$/i.test(model) && !cellularRequested) return false;
+    return true;
+  }
+
+  if (vendor === "VeloCloud") {
+    // Edge 710-W is always treated as base model (it's the standard desktop model)
+    if (model === "Edge 710-W") return true;
+    // -W suffix = WiFi, non-base unless WiFi requested
+    if (model.includes("-W") && !wifiRequested) return false;
+    // -5G suffix = cellular, non-base unless cellular requested
+    if (model.includes("-5G") && !cellularRequested) return false;
+    return true;
+  }
+
+  return true;
+}
+
+function getInterfacePurposeColors(interfaceStr: string | null | undefined, isHA?: boolean): { bg: string; text: string } {
+  if (!interfaceStr) return { bg: "rgba(255,107,107,0.04)", text: "#e03131" }; // unmatched / failure
+  if (isHA) {
+    // HA dedicated port → purple, LAN port used for HA → green, LAN/WAN → grey, FortiLink → grey
+    if (interfaceStr.includes("(HA)")) return { bg: "rgba(62,26,128,0.08)", text: "#3E1A80" };
+    if (interfaceStr.includes("(LAN)") && !interfaceStr.includes("WAN")) return { bg: "rgba(14,135,66,0.08)", text: "#0E8742" };
+    if (interfaceStr.includes("(LAN/WAN)") || interfaceStr.includes("FortiLink")) return { bg: "#f1f3f5", text: "#868e96" };
+    return { bg: "rgba(62,26,128,0.08)", text: "#3E1A80" }; // default HA to purple
+  }
+  // WAN circuit matches — determine color from the mapped interface purpose
+  if (interfaceStr.includes("(WAN)") && !interfaceStr.includes("LAN")) return { bg: "rgba(1,76,113,0.08)", text: "#014C71" };
+  if (interfaceStr.includes("(LAN)") && !interfaceStr.includes("WAN")) return { bg: "rgba(14,135,66,0.08)", text: "#0E8742" };
+  if (interfaceStr.includes("(LAN/WAN)")) return { bg: "#f1f3f5", text: "#868e96" };
+  return { bg: "rgba(1,76,113,0.08)", text: "#014C71" }; // default WAN circuit mapping to teal
+}
+
+function InterfaceTable({ interfaces, maxRows }: { interfaces: ApplianceInterface[]; maxRows?: number }) {
+  return (
+    <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, overflow: "hidden" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <tbody>
+          {interfaces.map((iface, i) => (
+            <tr key={i} style={{ borderBottom: i < interfaces.length - 1 ? "1px solid #f1f3f5" : "none" }}>
+              <td style={{ padding: "2px 20px", fontSize: "0.65rem", fontWeight: 600, color: "#212529", width: 42 }}>{iface.quantity}×</td>
+              <td style={{ padding: "2px 4px", fontSize: "0.65rem", color: "#495057" }}>
+                {iface.type}
+                {iface.poeCapable && <Text span ml={4} style={{ fontSize: "0.5rem", fontWeight: 700, color: "#EE7C13" }}>PoE</Text>}
+              </td>
+              <td style={{ padding: "2px 20px", textAlign: "right" }}>
+                <Text span style={{
+                  fontSize: "0.55rem", fontWeight: 500, padding: "1px 4px", borderRadius: 3,
+                  backgroundColor: iface.purpose.includes("WAN") && !iface.purpose.includes("LAN") ? "rgba(1,76,113,0.08)" :
+                    iface.purpose.includes("LAN") && !iface.purpose.includes("WAN") ? "rgba(14,135,66,0.08)" :
+                    iface.purpose.includes("HA") ? "rgba(62,26,128,0.08)" : "#e9ecef",
+                  color: iface.purpose.includes("WAN") && !iface.purpose.includes("LAN") ? "#014C71" :
+                    iface.purpose.includes("LAN") && !iface.purpose.includes("WAN") ? "#0E8742" :
+                    iface.purpose.includes("HA") ? "#3E1A80" : "#868e96",
+                }}>
+                  {iface.purpose}
+                </Text>
+              </td>
+            </tr>
+          ))}
+          {maxRows && Array.from({ length: maxRows - interfaces.length }).map((_, i) => (
+            <tr key={`sp-${i}`}><td style={{ padding: "2px 20px", background: "#fff" }}>&nbsp;</td><td style={{ background: "#fff" }}>&nbsp;</td><td style={{ padding: "2px 20px", background: "#fff" }}>&nbsp;</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </Box>
+  );
+}
+
+function NoteBox({ emoji, text, color }: { emoji: string; text: string; color: string }) {
+  return (
+    <Box style={{ display: "flex", alignItems: "flex-start", gap: 6, backgroundColor: `${color}08`, borderRadius: 4, padding: "3px 8px", marginBottom: 4, fontSize: "0.6rem", color }}>
+      <Text span style={{ flexShrink: 0, fontSize: "0.5rem", lineHeight: 1.2 }}>{emoji}</Text>
+      <Text span style={{ fontSize: "0.6rem", color }}>{text}</Text>
+    </Box>
+  );
+}
+
+function RecommendedCard({ result, featureMap, tooltipFeatureMap, maxInterfaceRows, maxCircuitRows }: {
+  result: ScoredAppliance; featureMap: Record<string, string>; tooltipFeatureMap: Record<string, string>; maxInterfaceRows: number; maxCircuitRows: number;
+}) {
+  const { appliance, matchDetails } = result;
+  return (
+    <Paper p="sm" radius="md" withBorder shadow="sm" bg="white" style={{ borderColor: "#014C71", borderWidth: 2, display: "flex", flexDirection: "column" }}>
+      <Text size="xs" fw={700} tt="uppercase" style={{ letterSpacing: "0.08em", backgroundColor: "#014C71", color: "#fff", display: "inline-block", padding: "2px 8px", borderRadius: 99, fontSize: "0.6rem", marginBottom: 8, alignSelf: "flex-start" }}>
+        ⭐ Recommended
+      </Text>
+      <Box style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+        <Box>
+          <Box style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Text fw={700} size="md" c="dark">{appliance.model}</Text>
+            {appliance.endOfSale && (
+              <Text span style={{
+                fontSize: "0.5rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em",
+                backgroundColor: "#FFF3BF", color: "#E67700",
+                padding: "1px 6px", borderRadius: 99, whiteSpace: "nowrap",
+              }}>
+                ⚠️ EoS {appliance.endOfSale}
+              </Text>
+            )}
+          </Box>
+          <Text style={{ fontSize: "0.6rem", color: "#adb5bd" }}>{appliance.category}</Text>
+        </Box>
+        <Box style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+          <ScoreTooltip result={result} featureMap={tooltipFeatureMap}>
+            <Text span style={{
+              fontSize: "0.65rem", fontWeight: 700, padding: "2px 8px", borderRadius: 99, cursor: "help",
+              backgroundColor: result.percentageScore >= 75 ? "rgba(14,135,66,0.08)" : result.percentageScore >= 50 ? "rgba(238,124,19,0.08)" : "rgba(255,107,107,0.08)",
+              color: result.percentageScore >= 75 ? "#0E8742" : result.percentageScore >= 50 ? "#EE7C13" : "#e03131",
+            }}>
+              {result.percentageScore}%
+            </Text>
+          </ScoreTooltip>
+          {appliance.features.length > 0 && (
+            <Group gap={4} wrap="wrap" justify="flex-end">
+              {appliance.features.map(fid => (
+                <Text key={fid} span style={{ fontSize: "0.55rem", fontWeight: 600, padding: "2px 6px", borderRadius: 99, backgroundColor: "rgba(1,76,113,0.08)", color: "#014C71" }}>
+                  {featureMap[fid] || fid}
+                </Text>
+              ))}
+            </Group>
+          )}
+        </Box>
+      </Box>
+      <SimpleGrid cols={3} spacing={6} mb="sm">
+        {[
+          ["Throughput", formatThroughput(appliance.ngfwThroughputMbps)],
+          ["Capacity", formatThroughput(appliance.capacityMbps)],
+          ["Form Factor", appliance.formFactor],
+          ["Price", appliance.priceRange],
+          ["Power", `${appliance.powerConsumptionWatts}W`],
+          ["PSU", appliance.powerSupply],
+        ].map(([label, value]) => (
+          <Box key={label} style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
+            <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</Text>
+            <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{value}</Text>
+          </Box>
+        ))}
+      </SimpleGrid>
+      <Box mb="sm" style={{ minHeight: maxInterfaceRows * 26 + 20 }}>
+        <Text style={{ fontSize: "0.55rem", fontWeight: 600, color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Interfaces</Text>
+        <InterfaceTable interfaces={appliance.interfaces} maxRows={maxInterfaceRows} />
+      </Box>
+      {((matchDetails.interfaces && matchDetails.interfaces.matches.length > 0) || result.haInterfaceMapping || result.cellularInterfaceMapping) && (
+        <Box mb="sm" style={{ minHeight: maxCircuitRows * 30 + 18 }}>
+          <Text style={{ fontSize: "0.55rem", fontWeight: 600, color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Interface Mapping</Text>
+          <Box style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {(matchDetails.interfaces?.matches ?? []).map(match => {
+              const ctName = circuitTypes.find(ct => ct.id === match.circuitTypeId)?.name ?? match.circuitTypeId;
+              const colors = match.isMatched
+                ? getInterfacePurposeColors(match.matchedApplianceInterface)
+                : getInterfacePurposeColors(undefined);
+              return (
+                <Box key={match.circuitId} style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "3px 8px", borderRadius: 4, fontSize: "0.65rem",
+                  backgroundColor: colors.bg,
+                }}>
+                  {match.isMatched ? <IconCheck size={10} color={colors.text} style={{ flexShrink: 0 }} /> : <IconX size={10} color="#e03131" style={{ flexShrink: 0 }} />}
+                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>{ctName}</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.55rem", lineHeight: 1 }}>•</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>{formatThroughput(match.bandwidthMbps)}</Text>
+                  {match.isMatched && <Text span ml="auto" style={{ fontSize: "0.6rem", color: colors.text, flexShrink: 0 }}>→ {match.matchedApplianceInterface}</Text>}
+                </Box>
+              );
+            })}
+            {result.cellularInterfaceMapping && (() => {
+              const cellColors = { bg: "rgba(238,124,19,0.08)", text: "#EE7C13" };
+              return (
+                <Box style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "3px 8px", borderRadius: 4, fontSize: "0.65rem",
+                  backgroundColor: cellColors.bg,
+                }}>
+                  <IconCheck size={10} color={cellColors.text} style={{ flexShrink: 0 }} />
+                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>Cellular</Text>
+                  {result.cellularInterfaceMapping.type !== "Built-in 5G/LTE" && (
+                    <>
+                      <Text span c="dimmed" style={{ fontSize: "0.55rem", lineHeight: 1 }}>•</Text>
+                      <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>External Gateway</Text>
+                    </>
+                  )}
+                  <Text span ml="auto" style={{ fontSize: "0.6rem", color: cellColors.text, flexShrink: 0 }}>→ {result.cellularInterfaceMapping.type}</Text>
+                </Box>
+              );
+            })()}
+            {result.haInterfaceMapping && (() => {
+              const haColors = getInterfacePurposeColors(result.haInterfaceMapping!.type, true);
+              return (
+                <Box style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "3px 8px", borderRadius: 4, fontSize: "0.65rem",
+                  backgroundColor: haColors.bg,
+                }}>
+                  <IconCheck size={10} color={haColors.text} style={{ flexShrink: 0 }} />
+                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>HA Peering</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.55rem", lineHeight: 1 }}>•</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>Order 2 units</Text>
+                  <Text span ml="auto" style={{ fontSize: "0.6rem", color: haColors.text, flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
+                </Box>
+              );
+            })()}
+          </Box>
+        </Box>
+      )}
+      {result.cellularNote && !result.cellularInterfaceMapping && <NoteBox emoji="📱" text={result.cellularNote} color="#EE7C13" />}
+      {result.haNote && !result.haInterfaceMapping && <NoteBox emoji="🔁" text={result.haNote} color="#014C71" />}
+      {result.wifiNote && <NoteBox emoji="📶" text={result.wifiNote} color="#EE7C13" />}
+      {result.poeNote && <NoteBox emoji="🔋" text={result.poeNote} color="#EE7C13" />}
+    </Paper>
+  );
+}
+
+function CompactCard({ result, featureMap, tooltipFeatureMap, isNonMatching, isGrowthPick, growthReason }: {
+  result: ScoredAppliance; featureMap: Record<string, string>; tooltipFeatureMap: Record<string, string>; isNonMatching?: boolean; isGrowthPick?: boolean; growthReason?: string | null;
+}) {
+  const { appliance, percentageScore } = result;
+  return (
+    <Paper p="sm" radius="md" withBorder bg="white" style={{
+      borderColor: isGrowthPick ? "#0E8742" : "#e9ecef",
+      borderWidth: isGrowthPick ? 2 : 1,
+      opacity: isNonMatching ? 0.75 : 1,
+    }}>
+      {isGrowthPick && (() => {
+        const lines = growthReason ? growthReason.split("\n") : [];
+        const tierLabel = lines[0] || "Recommended for future bandwidth growth";
+        const detail = lines[1] || null;
+        return (
+          <Tooltip
+            label={
+              <Box>
+                <Text fw={700} style={{ fontSize: "0.7rem", lineHeight: 1.3 }}>{tierLabel}</Text>
+                {detail && <Text style={{ fontSize: "0.65rem", lineHeight: 1.3, opacity: 0.85, marginTop: 2 }}>{detail}</Text>}
+              </Box>
+            }
+            position="top"
+            withArrow
+            multiline
+            w={240}
+            styles={{
+              tooltip: {
+                padding: "8px 12px",
+                backgroundColor: "#212529",
+                color: "#fff",
+              },
+            }}
+          >
+            <Text style={{ fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: "#0E8742", color: "#fff", display: "inline-block", padding: "2px 8px", borderRadius: 99, marginBottom: 8, cursor: "help" }}>
+              📈 Growth Pick
+            </Text>
+          </Tooltip>
+        );
+      })()}
+      <Box style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+        <Box>
+          <Box style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Text fw={700} size="sm" c="dark">{appliance.model}</Text>
+            {appliance.endOfSale && (
+              <Text span style={{
+                fontSize: "0.5rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em",
+                backgroundColor: "#FFF3BF", color: "#E67700",
+                padding: "1px 6px", borderRadius: 99, whiteSpace: "nowrap",
+              }}>
+                ⚠️ EoS {appliance.endOfSale}
+              </Text>
+            )}
+          </Box>
+          <Text style={{ fontSize: "0.6rem", color: "#adb5bd" }}>{appliance.category}</Text>
+        </Box>
+        <Box style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+          <ScoreTooltip result={result} featureMap={tooltipFeatureMap}>
+            <Text span style={{
+              fontSize: "0.65rem", fontWeight: 700, padding: "2px 8px", borderRadius: 99, cursor: "help",
+              backgroundColor: percentageScore >= 75 ? "rgba(14,135,66,0.08)" : percentageScore >= 50 ? "rgba(238,124,19,0.08)" : "rgba(255,107,107,0.08)",
+              color: percentageScore >= 75 ? "#0E8742" : percentageScore >= 50 ? "#EE7C13" : "#e03131",
+            }}>
+              {percentageScore}%
+            </Text>
+          </ScoreTooltip>
+          {appliance.features.length > 0 && (
+            <Group gap={4} wrap="wrap" justify="flex-end">
+              {appliance.features.map(fid => (
+                <Text key={fid} span style={{ fontSize: "0.55rem", fontWeight: 600, padding: "2px 6px", borderRadius: 99, backgroundColor: "rgba(1,76,113,0.08)", color: "#014C71" }}>
+                  {featureMap[fid] || fid}
+                </Text>
+              ))}
+            </Group>
+          )}
+        </Box>
+      </Box>
+      <SimpleGrid cols={3} spacing={6} mb={8}>
+        <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
+          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>Throughput</Text>
+          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{formatThroughput(appliance.ngfwThroughputMbps)}</Text>
+        </Box>
+        <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
+          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>Capacity</Text>
+          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{formatThroughput(appliance.capacityMbps)}</Text>
+        </Box>
+        <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
+          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>Form Factor</Text>
+          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{appliance.formFactor}</Text>
+        </Box>
+        <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
+          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>Price</Text>
+          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{appliance.priceRange}</Text>
+        </Box>
+        <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
+          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>Power</Text>
+          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{appliance.powerConsumptionWatts}W</Text>
+        </Box>
+        <Box style={{ backgroundColor: "#f8f9fa", borderRadius: 4, padding: "6px 8px" }}>
+          <Text style={{ fontSize: "0.55rem", color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em" }}>PSU</Text>
+          <Text style={{ fontSize: "0.7rem", fontWeight: 600, color: "#212529" }}>{appliance.powerSupply}</Text>
+        </Box>
+      </SimpleGrid>
+      {appliance.interfaces.length > 0 && (
+        <Box mb={8}>
+          <Text style={{ fontSize: "0.55rem", fontWeight: 600, color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Interfaces</Text>
+          <InterfaceTable interfaces={appliance.interfaces} />
+        </Box>
+      )}
+      {isGrowthPick && ((result.matchDetails.interfaces && result.matchDetails.interfaces.matches.length > 0) || result.haInterfaceMapping || result.cellularInterfaceMapping) && (
+        <Box mb={8}>
+          <Text style={{ fontSize: "0.55rem", fontWeight: 600, color: "#adb5bd", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Interface Mapping</Text>
+          <Box style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {(result.matchDetails.interfaces?.matches ?? []).map(match => {
+              const ctName = circuitTypes.find(ct => ct.id === match.circuitTypeId)?.name ?? match.circuitTypeId;
+              const colors = match.isMatched
+                ? getInterfacePurposeColors(match.matchedApplianceInterface)
+                : getInterfacePurposeColors(undefined);
+              return (
+                <Box key={match.circuitId} style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "3px 8px", borderRadius: 4, fontSize: "0.65rem",
+                  backgroundColor: colors.bg,
+                }}>
+                  {match.isMatched ? <IconCheck size={10} color={colors.text} style={{ flexShrink: 0 }} /> : <IconX size={10} color="#e03131" style={{ flexShrink: 0 }} />}
+                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>{ctName}</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.55rem", lineHeight: 1 }}>•</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>{formatThroughput(match.bandwidthMbps)}</Text>
+                  {match.isMatched && <Text span ml="auto" style={{ fontSize: "0.6rem", color: colors.text, flexShrink: 0 }}>→ {match.matchedApplianceInterface}</Text>}
+                </Box>
+              );
+            })}
+            {result.cellularInterfaceMapping && (() => {
+              const cellColors = { bg: "rgba(238,124,19,0.08)", text: "#EE7C13" };
+              return (
+                <Box style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "3px 8px", borderRadius: 4, fontSize: "0.65rem",
+                  backgroundColor: cellColors.bg,
+                }}>
+                  <IconCheck size={10} color={cellColors.text} style={{ flexShrink: 0 }} />
+                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>Cellular</Text>
+                  {result.cellularInterfaceMapping.type !== "Built-in 5G/LTE" && (
+                    <>
+                      <Text span c="dimmed" style={{ fontSize: "0.55rem", lineHeight: 1 }}>•</Text>
+                      <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>External Gateway</Text>
+                    </>
+                  )}
+                  <Text span ml="auto" style={{ fontSize: "0.6rem", color: cellColors.text, flexShrink: 0 }}>→ {result.cellularInterfaceMapping.type}</Text>
+                </Box>
+              );
+            })()}
+            {result.haInterfaceMapping && (() => {
+              const haColors = getInterfacePurposeColors(result.haInterfaceMapping!.type, true);
+              return (
+                <Box style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "3px 8px", borderRadius: 4, fontSize: "0.65rem",
+                  backgroundColor: haColors.bg,
+                }}>
+                  <IconCheck size={10} color={haColors.text} style={{ flexShrink: 0 }} />
+                  <Text span fw={500} c="gray.7" style={{ fontSize: "0.65rem" }}>HA Peering</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.55rem", lineHeight: 1 }}>•</Text>
+                  <Text span c="dimmed" style={{ fontSize: "0.65rem" }}>Order 2 units</Text>
+                  <Text span ml="auto" style={{ fontSize: "0.6rem", color: haColors.text, flexShrink: 0 }}>→ {result.haInterfaceMapping.type}</Text>
+                </Box>
+              );
+            })()}
+          </Box>
+        </Box>
+      )}
+      {isNonMatching && result.failureReasons.length > 0 && (
+        <Box pt={8} style={{ borderTop: "1px solid #f1f3f5" }}>
+          {result.failureReasons.map((reason, i) => (
+            <Box key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.6rem", color: "#e03131" }}>
+              <IconX size={8} style={{ flexShrink: 0 }} /> {reason}
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Paper>
+  );
+}
+
+function VendorColumn({ vendorRec, featureMap, tooltipFeatureMap, maxInterfaceRows, maxCircuitRows, selectedFeatures }: {
+  vendorRec: VendorRecommendation; featureMap: Record<string, string>; tooltipFeatureMap: Record<string, string>; maxInterfaceRows: number; maxCircuitRows: number; selectedFeatures: string[];
+}) {
+  const [showUpgrades, setShowUpgrades] = useState(false);
+  const [showNonMatching, setShowNonMatching] = useState(false);
+  const hasRecommendation = vendorRec.recommended !== null;
+
+  return (
+    <Box style={{ display: "flex", flexDirection: "column" }}>
+      <Box style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid #e9ecef", minHeight: 48 }}>
+        {vendorRec.vendor === "Fortinet" ? (
+          <img src="/fortinet-logo.png" alt="Fortinet" style={{ height: 44, objectFit: "contain" }} />
+        ) : vendorRec.vendor === "Cisco Meraki" ? (
+          <img src="/cisco-meraki-logo.png" alt="Cisco Meraki" style={{ height: 28, objectFit: "contain" }} />
+        ) : (
+          <Text size="1.5rem" fw={700} c="dark">{vendorRec.vendor}</Text>
+        )}
+        {!hasRecommendation && <Text style={{ fontSize: "0.6rem", color: "#adb5bd", marginTop: 4 }}>No compatible model</Text>}
+      </Box>
+      {hasRecommendation && (
+        <RecommendedCard result={vendorRec.recommended!} featureMap={featureMap} tooltipFeatureMap={tooltipFeatureMap} maxInterfaceRows={maxInterfaceRows} maxCircuitRows={maxCircuitRows} />
+      )}
+      {vendorRec.upgrades.length > 0 && (
+        <Box mt="sm">
+          <UnstyledButton onClick={() => setShowUpgrades(!showUpgrades)} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.7rem", fontWeight: 500, color: "#014C71" }}>
+            {showUpgrades ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+            Alternative Models ({vendorRec.upgrades.length})
+          </UnstyledButton>
+          {showUpgrades && (
+            <Box mt={8} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[...vendorRec.upgrades]
+                .sort((a, b) => {
+                  // Growth pick always first
+                  const aG = vendorRec.growthPick?.appliance.id === a.appliance.id ? 1 : 0;
+                  const bG = vendorRec.growthPick?.appliance.id === b.appliance.id ? 1 : 0;
+                  if (aG !== bG) return bG - aG;
+                  // Base models above non-base models (unless user requested WiFi/cellular)
+                  const aBase = isBaseModel(a.appliance.model, vendorRec.vendor, selectedFeatures) ? 1 : 0;
+                  const bBase = isBaseModel(b.appliance.model, vendorRec.vendor, selectedFeatures) ? 1 : 0;
+                  if (aBase !== bBase) return bBase - aBase;
+                  // Within same tier, sort by score then model name
+                  if (b.percentageScore !== a.percentageScore) return b.percentageScore - a.percentageScore;
+                  return compareModels(a.appliance.model, b.appliance.model);
+                })
+                .map(scored => (
+                  <CompactCard
+                    key={scored.appliance.id}
+                    result={scored}
+                    featureMap={featureMap}
+                    tooltipFeatureMap={tooltipFeatureMap}
+                    isGrowthPick={vendorRec.growthPick?.appliance.id === scored.appliance.id}
+                    growthReason={vendorRec.growthPick?.appliance.id === scored.appliance.id ? vendorRec.growthReason : null}
+                  />
+                ))}
+            </Box>
+          )}
+        </Box>
+      )}
+      {vendorRec.nonMatching.length > 0 && (
+        <Box mt="sm">
+          <UnstyledButton onClick={() => setShowNonMatching(!showNonMatching)} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.7rem", fontWeight: 500, color: "#adb5bd" }}>
+            {showNonMatching ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+            Excluded Models ({vendorRec.nonMatching.length})
+          </UnstyledButton>
+          {showNonMatching && (
+            <Box mt={8} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[...vendorRec.nonMatching]
+                .sort((a, b) => {
+                  if (b.percentageScore !== a.percentageScore) return b.percentageScore - a.percentageScore;
+                  return compareModels(a.appliance.model, b.appliance.model);
+                })
+                .map(scored => (
+                  <CompactCard key={scored.appliance.id} result={scored} featureMap={featureMap} tooltipFeatureMap={tooltipFeatureMap} isNonMatching />
+                ))}
+            </Box>
+          )}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+interface ResultsProps {
+  results: RecommendationResult | null;
+  features: Feature[];
+  selectedFeatures: string[];
+}
+
+export default function Results({ results, features, selectedFeatures }: ResultsProps) {
+  const featureMap: Record<string, string> = {};
+  features.forEach(f => { featureMap[f.id] = f.name; });
+  // Short names for tooltip display (concise inline format: ✓HA ✓Wi-Fi ✗PoE)
+  const tooltipFeatureMap: Record<string, string> = {
+    ha: "HA",
+    wifi6: "Wi-Fi",
+    lte_failover: "Cellular",
+    poe: "PoE",
+  };
+
+  const defaultEnabledVendors = useMemo(() => {
+    if (!results) return [];
+    return results.vendorRecommendations.filter(v => v.recommended !== null).map(v => v.vendor);
+  }, [results]);
+
+  const [enabledVendors, setEnabledVendors] = useState<string[]>(defaultEnabledVendors);
+
+  if (enabledVendors.length === 0 && defaultEnabledVendors.length > 0) {
+    setEnabledVendors(defaultEnabledVendors);
+    return null;
+  }
+
+  const toggleVendor = (vendor: string) => {
+    setEnabledVendors(prev => prev.includes(vendor) ? prev.filter(v => v !== vendor) : [...prev, vendor]);
+  };
+
+  if (!results) {
+    return (
+      <Box style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 0", gap: 16 }}>
+        <Loader color="vcom-teal" />
+        <Text c="dimmed">Analyzing appliances...</Text>
+      </Box>
+    );
+  }
+
+  const visibleVendors = results.vendorRecommendations.filter(v => enabledVendors.includes(v.vendor));
+  const maxInterfaceRows = visibleVendors.reduce((max, v) => v.recommended ? Math.max(max, v.recommended.appliance.interfaces.length) : max, 0);
+  const maxCircuitRows = visibleVendors.reduce((max, v) => v.recommended ? Math.max(max, v.recommended.matchDetails.interfaces?.matches.length ?? 0) : max, 0);
+  const columnCount = visibleVendors.length;
+
+  return (
+    <Box>
+      <Box ta="center" mb="lg">
+        <Text size="xl" fw={700} c="dark">🎯 Recommendations</Text>
+        <Text size="sm" c="dimmed" mt={4}>
+          Evaluated {results.totalEvaluated} appliances across {results.vendorRecommendations.length} vendors
+        </Text>
+      </Box>
+      <Group justify="center" gap={8} mb="lg">
+        {results.vendorRecommendations.map(vr => {
+          const isEnabled = enabledVendors.includes(vr.vendor);
+          const hasMatch = vr.recommended !== null;
+          return (
+            <UnstyledButton key={vr.vendor} onClick={() => toggleVendor(vr.vendor)} style={{
+              padding: "8px 16px", borderRadius: 8, border: `2px solid ${isEnabled ? "#014C71" : "#dee2e6"}`,
+              backgroundColor: isEnabled ? "#014C71" : "#fff", color: isEnabled ? "#fff" : "#868e96",
+              fontSize: "0.875rem", fontWeight: 600, transition: "all 200ms",
+            }}>
+              {isEnabled && <Text span mr={6}>✓</Text>}
+              {vr.vendor}
+              {!hasMatch && <Text span ml={6} style={{ fontSize: "0.6rem", opacity: 0.7 }}>(no match)</Text>}
+            </UnstyledButton>
+          );
+        })}
+      </Group>
+      {visibleVendors.length === 0 ? (
+        <Box ta="center" py="xl"><Text c="dimmed" size="sm">Select at least one vendor above to see recommendations.</Text></Box>
+      ) : (
+        <SimpleGrid
+          cols={columnCount === 1 ? 1 : columnCount === 2 ? { base: 1, md: 2 } : { base: 1, md: 3 }}
+          spacing="lg"
+          style={columnCount === 1 ? { maxWidth: 512, margin: "0 auto" } : undefined}
+        >
+          {visibleVendors.map(vr => (
+            <VendorColumn key={vr.vendor} vendorRec={vr} featureMap={featureMap} tooltipFeatureMap={tooltipFeatureMap} maxInterfaceRows={maxInterfaceRows} maxCircuitRows={maxCircuitRows} selectedFeatures={selectedFeatures} />
+          ))}
+        </SimpleGrid>
+      )}
+    </Box>
+  );
+}
